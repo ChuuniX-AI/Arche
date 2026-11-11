@@ -1,0 +1,16 @@
+{
+  "name": "manilahack",
+  "version": "1.0.0",
+  "description": "Ad Guy: agentic trend scout that turns what is viral into video templates",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "agent-browser": "^0.42.0"
+  },
+  "type": "module"
+}
