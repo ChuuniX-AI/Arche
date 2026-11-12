@@ -14,6 +14,17 @@ Follow-ups ("make #2 shorter", "we never say bestie") revise the templates, and 
 2. Copy `.env.example` to `.env` and set `OPENAI_API_KEY` (optionally `OPENAI_MODEL`, default `gpt-5-mini`).
 3. `npm start` and open http://localhost:5173
 
+## Deploy (Fly.io)
+
+The `Dockerfile` installs Chrome for agent-browser. `fly.toml` runs one always-on machine in Singapore with a volume at `/data`
+(starter arches are seeded into it on boot; saved edits are kept).
+
+1. `fly apps create arche-demo` (or change `app` in `fly.toml`).
+2. `fly secrets set OPENAI_API_KEY=sk-...`
+3. `fly deploy`, then open https://arche-demo.fly.dev
+
+There's no auth: anyone with the URL can spend the OpenAI credits, so share it only for the demo.
+
 ## How it finds trends (deep search)
 
 A trend is many creators adopting the same thing right now, so the agent doesn't stop at one search:
