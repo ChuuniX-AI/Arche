@@ -1,4 +1,4 @@
-# Persona Studio: be the creator you want to be
+# Arche: be the creator you want to be
 
 Pick a persona (who you want to be as a creator) and put it on an account. Each account posts as one persona.
 In a thread, ask what's viral. The agent drives a real browser (agent-browser) through Google Trends and YouTube
@@ -35,8 +35,10 @@ A trend is many creators adopting the same thing right now, so the agent doesn't
 - **Become someone new** by just describing it on the blank chat ("I want to be a brutally honest street food reviewer, Taglish").
   The agent looks at what creators like that post on YouTube in the live browser, takes their formula (never their identity),
   and creates the persona as a card in the chat. From the card: find what's viral now, put it on an account, or edit it.
-- **Or start as one** of the personas above the composer. Each is a mood board of frames from real YouTube Shorts of the kind it makes
-  (picked by the agent for personas it creates). Four starters are included. Editing is the only form.
+- **Or tap a preset.** Four arches sit above the composer as reels: The Michelin Chef, The F1 Driver, The Hollywood Star, The K-Pop Idol.
+  Each plays a real YouTube Short (muted) while hovered, with a caption styled like a short-video post. Tapping one skips setup and starts the research.
+  The videos and their famous faces are for the demo: a public product would need rights to use those likenesses.
+  YouTube sometimes adds its own Shorts buttons to embeds, so the tiles zoom the video to keep those outside the frame.
 - **A persona's profile** (click its board, or its name in a thread's header) shows its mood board, voice, example captions,
   accounts, and every template made for it so far.
 - **An account** is a real handle (name, platform, country) bound to one persona. Choosing a persona that isn't on an account asks which account should post as it.
@@ -45,5 +47,4 @@ TikTok and Instagram profiles, and Reddit, block automated browsers, so the agen
 
 ## Data
 
-Personas, accounts, threads and screenshots are saved as plain files in `data/`. The starter personas, sample account and sample thread are checked in.
-The sample thread's browsing and screenshots are real, but its templates were written by hand.
+Personas, accounts, threads and screenshots are saved as plain files in `data/`. Only the starter personas are checked in.

@@ -1,4 +1,4 @@
-// Persona Studio: a creator picks who they want to be (a persona), and an agent browses public trend sources with agent-browser
+// Arche: a creator picks who they want to be (a persona), and an agent browses public trend sources with agent-browser
 // to find what's viral that fits that persona, then turns it into video templates. OpenAI decides what to do. One file, no framework.
 import http from 'node:http';
 import { execFile } from 'node:child_process';
@@ -180,7 +180,7 @@ const CREATE_TOOLS = [
   fn('create_persona', 'Create the persona the user described. Ends your turn.', PERSONA_FIELDS),
   CHAT_TOOLS.find((t) => t.function.name === 'reply'),
 ];
-const CREATE_SYSTEM = `You are Persona Studio. The user is telling you what kind of content creator they want to become.
+const CREATE_SYSTEM = `You are Arche. The user is telling you what kind of content creator they want to become.
 Turn that into a persona they can grow into.
 
 First ground it in what works right now; the user watches the browser live.
@@ -195,7 +195,7 @@ function system(a, p) {
   a ||= { region: 'WW', regionName: 'Worldwide' };
   const region = a.region || 'WW', geo = region === 'WW' ? 'US' : region;
   const where = region === 'WW' ? 'worldwide (use US data as the biggest market, and global YouTube)' : a.regionName;
-  return `You are Persona Studio's trend scout. A creator has chosen who they want to be (a persona) and posts as that persona on one account.
+  return `You are Arche's trend scout. A creator has chosen who they want to be (a persona) and posts as that persona on one account.
 Your job is to find what's viral right now that THIS persona would post.
 
 Account: ${a.name ? `${a.name} on ${a.platform || 'short video'}` : 'not on an account yet'}
@@ -421,6 +421,8 @@ http.createServer(async (req, res) => {
           id: ID.test(b.id || '') ? b.id : newId(), name: clip(b.name, 80) || 'Untitled persona', tagline: clip(b.tagline, 200),
           niche: clip(b.niche), audience: clip(b.audience), voice: clip(b.voice, 800), examples: clips(b.examples), avoid: clips(b.avoid),
           refs: clips(b.refs, 4).filter((r) => /^[\w-]{11}$/.test(r)), starter: !!b.starter, created: Number(b.created) || Date.now(),
+          // a preset's reel: the YouTube Short its tile plays on hover
+          ...(/^[\w-]{11}$/.test(b.video?.id || '') && { video: { id: b.video.id, start: Math.max(0, Number(b.video.start) || 0), ...(Number(b.video.end) > 0 && { end: Number(b.video.end) }), ...(/^\/posters\/[\w-]+\.(png|jpe?g)$/.test(b.video.poster || '') && { poster: b.video.poster }), tags: clips(b.video.tags, 4) } }),
         };
         await save('personas', persona);
         return json(res, persona);
@@ -453,7 +455,9 @@ http.createServer(async (req, res) => {
         const b = await body(req);
         // With an account, the thread scouts for its persona. Without one, the first message describes a new persona.
         const account = b.accountId ? await load('accounts', b.accountId) : null;
-        const thread = { id: newId(), accountId: account?.id || null, personaId: account?.personaId || null, title: clip(b.title, 80) || 'New thread', created: Date.now(), updated: Date.now(), items: [], llm: [] };
+        // A preset can start a thread on its own, with no account: research begins right away.
+        const preset = !account && ID.test(b.personaId || '') ? await load('personas', b.personaId).catch(() => null) : null;
+        const thread = { id: newId(), accountId: account?.id || null, personaId: account?.personaId || preset?.id || null, title: clip(b.title, 80) || 'New thread', created: Date.now(), updated: Date.now(), items: [], llm: [] };
         await save('threads', thread);
         return json(res, thread);
       }
@@ -506,4 +510,4 @@ http.createServer(async (req, res) => {
     res.writeHead(e.code === 'ENOENT' ? 404 : 400, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ error: e.code === 'ENOENT' ? 'Not found' : e.message }));
   }
-}).listen(PORT, () => console.log(`Persona Studio on http://localhost:${PORT}`));
+}).listen(PORT, () => console.log(`Arche on http://localhost:${PORT}`));

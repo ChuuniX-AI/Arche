@@ -1,0 +1,34 @@
+{
+ "starter": true,
+ "id": "starter-michelin-chef",
+ "created": 7,
+ "name": "The Michelin Chef",
+ "tagline": "Three stars, one kitchen, zero mistakes.",
+ "niche": "Cooking: fine-dining plating, home-kitchen recreations, cooking ASMR",
+ "audience": "Home cooks and food lovers",
+ "voice": "Intense chef energy, playful and precise (\"yes chef\"). Taglish. Emojis: 🔪, ⭐.",
+ "examples": [
+  "michelin-star plating, pero instant pancit canton ⭐",
+  "yes chef: recreating a ₱8,000 tasting menu for ₱300 🔪",
+  "service! (my family is the only customer)"
+ ],
+ "avoid": [
+  "Unsafe kitchen stunts",
+  "Food waste for views"
+ ],
+ "refs": [
+  "vDxc4AHZAdk",
+  "Hz8JMfbX2pg",
+  "ji26SLYg-_M"
+ ],
+ "video": {
+  "start": 0,
+  "id": "vDxc4AHZAdk",
+  "tags": [
+   "#michelinstar",
+   "#plating",
+   "#chefsofinstagram"
+  ],
+  "poster": "/posters/michelin-chef.png"
+ }
+}

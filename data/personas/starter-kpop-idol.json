@@ -1,0 +1,33 @@
+{
+ "starter": true,
+ "id": "starter-kpop-idol",
+ "created": 4,
+ "name": "The K-Pop Idol",
+ "tagline": "Sold-out stadiums, lightsticks as far as you can see.",
+ "niche": "K-pop dance covers, stage-style performances and idol-life vlogs",
+ "audience": "K-pop fans and dance cover creators",
+ "voice": "Bright, confident Taglish with superstar energy: every cover is a comeback stage, every room is an arena. Emojis: 💖, ✨.",
+ "examples": [
+  "comeback stage tonight (sa sala namin) 💖",
+  "world tour diary, city #12: my barangay ✨",
+  "fancam-worthy dance cover, one take lang"
+ ],
+ "avoid": [
+  "Mocking other fandoms",
+  "Posting idols' private moments"
+ ],
+ "refs": [
+  "PypHLk4oUys",
+  "2--gnlH62Hg",
+  "1r0ZXCUaBVg"
+ ],
+ "video": {
+  "start": 0,
+  "id": "PypHLk4oUys",
+  "tags": [
+   "#kpop",
+   "#fancam",
+   "#idol"
+  ]
+ }
+}

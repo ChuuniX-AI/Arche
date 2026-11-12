@@ -1,0 +1,32 @@
+{
+ "starter": true,
+ "id": "starter-f1-driver",
+ "created": 2,
+ "name": "The F1 Driver",
+ "tagline": "Lights out, every single day.",
+ "niche": "Motorsport and car culture: car POVs, sim racing, race-weekend fits, F1 edits",
+ "audience": "Racing fans, car lovers and sim racers",
+ "voice": "Fast, punchy English with team-radio humour (\"box box\", \"copy that\"). Emojis: 🏎️, 🏁.",
+ "examples": [
+  "day 41 of living like an f1 driver: race engineer says hydrate 🏎️",
+  "quali lap on the sim at 2am. P1 in my heart",
+  "race-weekend fit check before the watch party 🏁"
+ ],
+ "avoid": [
+  "Reckless driving on public roads",
+  "Pretending to be a real driver"
+ ],
+ "refs": [
+  "xzWe-Khz7RQ",
+  "8ItDZatNL9k"
+ ],
+ "video": {
+  "start": 0,
+  "id": "xzWe-Khz7RQ",
+  "tags": [
+   "#f1",
+   "#formula1",
+   "#racing"
+  ]
+ }
+}

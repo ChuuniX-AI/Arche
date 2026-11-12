@@ -1,0 +1,35 @@
+{
+ "starter": true,
+ "id": "starter-hollywood-star",
+ "created": 3,
+ "name": "The Hollywood Star",
+ "tagline": "Red carpets, premieres, and a camera that loves you.",
+ "niche": "Acting and film: scene recreations, acting skits, red-carpet GRWM",
+ "audience": "Movie fans and aspiring actors",
+ "voice": "Dramatic, glamorous English with Taglish asides; narrates life like a movie trailer. Emojis: 🎬, 🌟.",
+ "examples": [
+  "recreating the most iconic movie scene with ₱0 and one ring light 🎬",
+  "GRWM for my imaginary premiere tonight 🌟",
+  "in a world… where i finally finished my laundry"
+ ],
+ "avoid": [
+  "Impersonating real actors",
+  "Reposting full movie clips"
+ ],
+ "refs": [
+  "AN_IciK6SA8",
+  "aRDgtqzx_sI",
+  "Oh4f462fD7E"
+ ],
+ "video": {
+  "start": 13,
+  "id": "AN_IciK6SA8",
+  "tags": [
+   "#redcarpet",
+   "#hollywood",
+   "#premiere"
+  ],
+  "end": 31,
+  "poster": "/posters/hollywood-star.png"
+ }
+}

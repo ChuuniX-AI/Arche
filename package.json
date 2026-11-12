@@ -1,7 +1,7 @@
 {
   "name": "manilahack",
   "version": "1.0.0",
-  "description": "Persona Studio: an agentic trend scout that finds what's viral for the creator you want to be, as video templates",
+  "description": "Arche: an agentic trend scout that finds what's viral for the creator you want to be, as video templates",
   "main": "server.js",
   "scripts": {
     "start": "node --env-file-if-exists=.env server.js",
