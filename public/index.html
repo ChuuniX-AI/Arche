@@ -106,6 +106,9 @@ button { cursor: pointer; background: none; border: 0; }
 /* A finished browse: one row that replays it */
 .bhead { display: flex; align-items: center; gap: 12px; color: var(--dim); padding: 4px 6px 4px 4px; margin-left: -4px; border-radius: 12px; text-align: left; transition: background .15s, color .15s; }
 .bhead:hover { background: var(--panel); color: var(--ink); }
+.bhead { max-width: 100%; }
+.bhead .film { min-width: 0; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, #000 75%, transparent); mask-image: linear-gradient(90deg, #000 75%, transparent); }
+.bhead .film img { flex: none; }
 .bhead .pp { width: 30px; height: 30px; border-radius: 50%; background: var(--raise); box-shadow: 0 0 0 1px var(--line); display: grid; place-items: center; flex: none; }
 .bhead .pp svg, .rp-pp svg { width: 11px; height: 11px; fill: currentColor; }
 .bhead:hover .pp { background: var(--blue); box-shadow: none; color: #fff; }
@@ -141,6 +144,34 @@ button { cursor: pointer; background: none; border: 0; }
 .fv span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
 .fv.used i { box-shadow: 0 0 0 2px var(--blue); }
 .fv.used span { color: var(--ink); }
+.fv.old i { opacity: .35; filter: grayscale(1); }
+.fv.old span { text-decoration: line-through; text-decoration-color: rgba(139,145,160,.6); }
+
+/* The trend board: patterns many creators share, and the agent's verdicts */
+.board { margin-top: 14px; background: var(--panel); box-shadow: 0 0 0 1px var(--line); border-radius: 16px; padding: 12px 12px 6px; }
+.board .flabel { padding: 0 4px; }
+.brows { list-style: none; padding: 0; display: grid; }
+.br { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 9px 4px; border-top: 1px solid var(--line); }
+.br:first-child { border-top: 0; }
+.br.new { animation: brin .45s cubic-bezier(.2,1.2,.4,1) both; }
+@keyframes brin { from { opacity: 0; transform: translateY(8px); } }
+.bstack { display: flex; }
+.bstack i { width: 22px; aspect-ratio: 9 / 16; border-radius: 4px; background: var(--raise) center / cover; box-shadow: 0 0 0 2px var(--panel); margin-left: -7px; }
+.bstack i:first-child { margin-left: 0; }
+.bmain { min-width: 0; display: grid; gap: 2px; }
+.bmain b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bmain small { color: var(--dim); font-size: 12px; font-variant-numeric: tabular-nums; }
+.bmain .why { color: var(--ink); opacity: .8; }
+.bchip { font-size: 11.5px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+.br.checking .bchip { color: var(--blue); background: rgba(61,107,255,.12); }
+.br.checking .bchip::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--blue); animation: blink 1.2s infinite; }
+.br.confirmed .bchip { color: #000; background: #3ddc97; }
+.br.confirmed.flash { animation: flash .9s ease-out; }
+@keyframes flash { from { background: rgba(61,220,151,.25); } }
+.br.dropped { opacity: .55; }
+.br.unfollowed .bchip { color: var(--dim); background: var(--raise); }
+.br.dropped .bmain b { text-decoration: line-through; text-decoration-color: var(--grey); }
+.br.dropped .bchip { color: var(--dim); background: var(--raise); }
 .shelf.static .fv { animation: none; }
 @keyframes slidein { from { opacity: 0; transform: translateY(16px) scale(.8); } }
 
@@ -356,6 +387,7 @@ dialog .btns.split { justify-content: flex-start; }
   .gallery { grid-auto-columns: 44%; }
   .newp { grid-template-columns: 120px 1fr; gap: 14px; }
   .newp h3 { font-size: 22px; }
+  .bstack { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
@@ -589,9 +621,28 @@ function newPersonaHTML(p) {
         <button type="button" class="quiet" data-profile="${esc(p.id)}">Profile</button></div></div></div>`;
 }
 // Videos the agent found while browsing. The ones a template is based on get a ring.
-const views = (v) => (v.stats || '').split('·')[0].trim();
-const fvHTML = (v, used, delay = 0) => `<a class="fv${used?.has(v.id) ? ' used' : ''}" href="https://www.youtube.com/shorts/${esc(v.id)}" target="_blank" rel="noopener"
-  title="${esc(v.title)}${v.stats ? ' · ' + esc(v.stats) : ''}" style="--d:${delay}ms"><i style="background-image:url('/api/thumb?id=${esc(v.id)}')"></i>${views(v) ? `<span>${esc(views(v))}</span>` : ''}</a>`;
+// Fresh videos show their speed (views per hour); videos older than two weeks are greyed out: not evidence of a trend.
+const FRESH_H = 24 * 14;
+const short = (n) => (n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(n >= 1e4 ? 0 : 1) + 'K' : String(Math.round(n)));
+const views = (v) => (v.vph != null && v.ageH != null && v.ageH <= FRESH_H ? `${short(v.vph)}/hr` : (v.stats || '').split('·')[0].trim());
+const fvHTML = (v, used, delay = 0) => `<a class="fv${used?.has(v.id) ? ' used' : ''}${v.ageH > FRESH_H ? ' old' : ''}" href="https://www.youtube.com/shorts/${esc(v.id)}" target="_blank" rel="noopener"
+  title="${esc(v.title)}${v.stats ? ' · ' + esc(v.stats) : ''}${v.ageH > FRESH_H ? ' · too old to count' : ''}" style="--d:${delay}ms"><i style="background-image:url('/api/thumb?id=${esc(v.id)}')"></i>${views(v) ? `<span>${esc(views(v))}</span>` : ''}</a>`;
+// The trend board, confirmed first, then the ones still being checked, then dropped.
+const ORDER = { confirmed: 0, checking: 1, unfollowed: 1, dropped: 2 };
+const LABEL = { confirmed: 'Confirmed', checking: 'Checking', unfollowed: 'Not followed up', dropped: 'Dropped' };
+function trendBoardHTML(board, seen) {
+  if (!board?.length) return '';
+  if (!seen) board = board.map((e) => (e.status === 'checking' ? { ...e, status: 'unfollowed' } : e)); // a finished scout: nothing is still being checked
+  const rows = [...board].sort((a, b) => ORDER[a.status] - ORDER[b.status]);
+  const n = (st) => board.filter((e) => e.status === st).length;
+  const stats = (e) => [e.videos != null && `${e.videos} videos`, e.channels && `${e.channels} creators`, e.week != null && `${e.week} this week`,
+    e.medianVph != null && `${short(e.medianVph)}/hr`, e.reach].filter(Boolean).join(' · ');
+  return `<div class="board"><p class="flabel"><b>Trend board</b>${n('confirmed') ? ` · ${n('confirmed')} confirmed` : ''}${n('checking') ? ` · ${n('checking')} checking` : ''}${n('unfollowed') ? ` · ${n('unfollowed')} not followed up` : ''}${n('dropped') ? ` · ${n('dropped')} dropped` : ''}</p>
+    <ul class="brows">${rows.map((e) => `<li class="br ${e.status}${seen && !seen.has(e.key + e.status) ? (e.status === 'confirmed' ? ' new flash' : ' new') : ''}">
+      <span class="bstack">${(e.ids || []).slice(0, 3).map((id) => `<i style="background-image:url('/api/thumb?id=${esc(id)}')"></i>`).join('')}</span>
+      <span class="bmain"><b>${esc(e.name || e.key)}</b><small>${e.name ? esc(e.key) + ' · ' : ''}${esc(stats(e))}</small>${e.reason ? `<small class="why">${esc(e.reason)}</small>` : ''}</span>
+      <span class="bchip">${LABEL[e.status]}</span></li>`).join('')}</ul></div>`;
+}
 // Videos a template is based on, or that became a persona's picture.
 const usedRefs = () => new Set(thread.items.flatMap((it) => it.type === 'newpersona' ? (personaById(it.personaId) || it.persona)?.refs || []
   : (it.templates || []).flatMap((t) => t.references || [])));
@@ -607,7 +658,7 @@ function itemHTML(it, idx) {
     return `<div class="browsed"><button type="button" class="bhead" data-replay="${idx}" aria-label="Replay what the agent did"><span class="pp"><svg viewBox="0 0 12 12"><path d="M2.5 1v10l8.5-5z"/></svg></span>
       Replay · browsed ${it.steps.length} step${it.steps.length === 1 ? '' : 's'}
       <span class="film">${shots.slice(0, 6).map((s) => `<img src="${esc(s.shot)}" alt="">`).join('')}</span></button><div class="rp" hidden></div>
-      ${it.found?.length ? foundHTML(it.found) : ''}</div>`;
+      ${trendBoardHTML(it.board)}${it.found?.length ? foundHTML(it.found) : ''}</div>`;
   }
   if (it.type === 'templates') {
     return `<div class="result"><p>${esc(it.message)}</p>
@@ -631,6 +682,7 @@ function liveHTML() {
   return `<div class="browse" id="live"><p class="step"><span class="spin"></span><span id="liveNote">${esc(note)}</span></p>
     <div class="window"><div class="chrome"><span class="lights"><i></i><i></i><i></i></span><span class="addr" id="liveAddr">${esc(host(live.url) || 'Agent browser')}</span><span class="live-dot">Live</span></div>
     <div class="view"><img id="liveFrame" alt="The agent's browser, live"${live.frame ? ` src="${live.frame}"` : ' hidden'}>${ovHTML('liveOv')}<div class="wait" id="liveWait"${live.frame ? ' hidden' : ''}>Opening a browser…</div></div></div>
+    <div id="liveBoard">${trendBoardHTML(live.board)}</div>
     <div class="found" id="liveFound"${live.found.length ? '' : ' hidden'}><p class="flabel"><b id="liveCount">${live.found.length} videos found</b> so far</p>
       <div class="shelf static" id="liveShelf">${live.found.map((v) => fvHTML(v)).join('')}</div></div></div>`;
 }
@@ -767,7 +819,12 @@ async function send(text) {
   if (thread?.id === id) { thread = await api('/api/threads/' + encodeURIComponent(id)); persona = personaById(thread.personaId); header(); showAcct(); render(); scrollEnd(); }
 }
 function onEvent(ev) {
-  if (ev.type === 'browse') { live = { steps: [], url: '', found: [] }; render(); scrollEnd(); }
+  if (ev.type === 'browse') { live = { steps: [], url: '', found: [], board: [], seen: new Set() }; render(); scrollEnd(); }
+  else if (ev.type === 'board' && live) {
+    live.board = ev.board;
+    if ($('#liveBoard')) { $('#liveBoard').innerHTML = trendBoardHTML(ev.board, live.seen); scrollEnd(); }
+    for (const e of ev.board) live.seen.add(e.key + e.status); // rows animate in once, and again when their status changes
+  }
   else if (ev.type === 'found' && live) {
     collect($('#liveOv'), ev.boxes);
     live.found.push(...ev.items);
@@ -788,7 +845,7 @@ function onEvent(ev) {
   } else if (ev.type === 'url' && live) { live.url = ev.url; if ($('#liveAddr') && !$('#liveAddr')._t) setAddr($('#liveAddr'), host(ev.url)); }
   else if (ev.type === 'frame' && live) { live.frame = 'data:image/jpeg;base64,' + ev.data; if ($('#liveFrame')) paint($('#liveFrame'), $('#liveWait'), ev.data); }
   else if (['templates', 'reply', 'persona', 'newpersona', 'error'].includes(ev.type)) {
-    if (live && ev.type !== 'persona') { thread.items.push({ type: 'browse', steps: live.steps.map(({ note, args, box }) => ({ note, args, box })), found: live.found }); live = null; }
+    if (live && ev.type !== 'persona') { thread.items.push({ type: 'browse', steps: live.steps.map(({ note, args, box }) => ({ note, args, box })), found: live.found, board: live.board }); live = null; }
     if (ev.type === 'newpersona') { personas.push(ev.persona); persona = ev.persona; thread.personaId = ev.persona.id; thread.title = ev.persona.name; header(); }
     thread.items.push(ev); render(); scrollEnd();
     if (ev.type === 'newpersona') boardDone = buildBoard(ev.persona);

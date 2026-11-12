@@ -14,6 +14,21 @@ Follow-ups ("make #2 shorter", "we never say bestie") revise the templates, and 
 2. Copy `.env.example` to `.env` and set `OPENAI_API_KEY` (optionally `OPENAI_MODEL`, default `gpt-5-mini`).
 3. `npm start` and open http://localhost:5173
 
+## How it finds trends (deep search)
+
+A trend is many creators adopting the same thing right now, so the agent doesn't stop at one search:
+
+1. **Fan out.** 6–10 YouTube searches, each filtered to uploads from this week, mixing the niche with trend shapes ("pov", "ranking", "but make it"…).
+2. **Exact numbers.** Every video it collects is looked up on its own public page: exact publish time, views, channel and the creator's tags.
+   Views per hour come from that. Anything older than two weeks is greyed out on the shelf and never counts toward a trend.
+3. **Patterns.** The server finds hashtags, creator tags and title phrases shared by 3+ fresh videos. A search is never evidence for its own
+   words (videos found by searching "outfit check" don't count toward "outfit check"), and broad categories like #fashion aren't trends.
+4. **Follow the thread.** For the strongest patterns the agent opens the hashtag page (how many videos and channels use it), checks today's
+   uploads, and inspects the fastest video, then marks each pattern confirmed or dropped.
+5. **Trend board.** All of this shows live under the browser; templates are built only from confirmed patterns.
+
+`npm test` runs the checks for the parsing and pattern rules (`research.test.js`).
+
 ## Personas and accounts
 
 - **A persona** is who you want to be: a name, a one-line "who you want to be", niche, audience, voice, example captions, and what it never posts.

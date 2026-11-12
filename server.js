@@ -6,13 +6,14 @@ import { promisify } from 'node:util';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { CARDS_JS, REACH_JS, parseCard, videoFromHtml, withPageData, patternsOf, videoLine, patternLine, fmt, FRESH_HOURS } from './research.js';
 
 const run = promisify(execFile);
 const ROOT = import.meta.dirname;
 const DATA = path.join(ROOT, 'data');
 const AB = path.join(ROOT, 'node_modules/agent-browser/bin/agent-browser.js');
 const MODEL = process.env.OPENAI_MODEL || 'gpt-5-mini';
-const MAX_STEPS = Number(process.env.MAX_STEPS || 18);
+const MAX_STEPS = Number(process.env.MAX_STEPS || 32); // a deep search takes 20-30 steps
 const PORT = Number(process.env.PORT || 5173);
 for (const d of ['personas', 'accounts', 'threads', 'shots']) await fs.mkdir(path.join(DATA, d), { recursive: true });
 
@@ -31,34 +32,28 @@ const newId = () => Date.now().toString(36) + crypto.randomBytes(3).toString('he
 // Only page-reading and navigation commands. No eval, cookies, storage or downloads.
 const ALLOWED = new Set(['links', 'open', 'snapshot', 'click', 'fill', 'press', 'scroll', 'get', 'back', 'wait', 'find']);
 
-// The fixed page script behind the "links" command: lists the YouTube videos on the current page as
-// "id | title | 9.2M views · 1y ago", reading each result card's text, plus where the visible ones sit on screen.
-const LINKS_JS = `(() => { const boxes = []; const text = [...new Map([...document.querySelectorAll('a[href*="/shorts/"],a[href*="watch?v="]')].map((a) => {
-  const id = (a.href.match(/(?:shorts\\/|v=)([\\w-]{11})/) || [])[1];
-  const card = a.closest('ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2, ytd-video-renderer, ytd-rich-item-renderer, ytd-reel-item-renderer, ytd-grid-video-renderer');
-  const lines = ((card && card.innerText) || a.getAttribute('aria-label') || a.title || a.textContent || '').split(String.fromCharCode(10))
-    .map((l) => l.trim()).filter((l) => l && l !== 'New' && l !== 'Shorts' && l !== 'Now playing');
-  const stats = lines.find((l) => / views/.test(l)) || '';
-  const title = lines.filter((l) => l !== stats && !/^[\\d:]+$/.test(l)).sort((x, y) => y.length - x.length)[0] || '';
-  const r = (card || a).getBoundingClientRect();
-  if (id && r.width > 20 && r.bottom > 0 && r.top < innerHeight && boxes.length < 14 && !boxes.some((b) => b.id === id))
-    boxes.push({ id, x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) });
-  return [id, title.slice(0, 140) + ' | ' + stats.slice(0, 60)];
-}).filter(([id, t]) => id && t.length > 6)).entries()].slice(0, 25).map(([id, t]) => id + ' | ' + t).join('\\n');
-return JSON.stringify({ text, boxes }); })()`;
-// Parses links output back into videos, for the findings shelf.
-const parseLinks = (out) => String(out).split('\n').map((l) => l.split(' | ')).filter(([id]) => /^[\w-]{11}$/.test(id))
-  .map(([id, title = '', stats = '']) => ({ id, title: title.slice(0, 140), stats: stats.slice(0, 60) }));
-
 function browser(session, args) {
   if (!Array.isArray(args) || !ALLOWED.has(args[0])) return `Command not allowed. Use one of: ${[...ALLOWED].join(', ')}`;
   if (args[0] === 'open' && !/^https?:\/\//.test(args[1] || '')) return 'open needs an http(s) URL';
-  if (args[0] === 'links') return links(session);
+  if (args[0] === 'links') return cardsOf(session).then((cs) => cs.map(videoLine).join('\n'));
   return ab(session, args);
 }
-// Returns { text } for the agent and { boxes } (on-screen positions of the videos) for the UI.
-const linksFull = (session) => ab(session, ['eval', LINKS_JS]).then((o) => { try { return JSON.parse(JSON.parse(o)); } catch { return { text: o, boxes: [] }; } });
-const links = (session) => linksFull(session).then((r) => r.text);
+// The video cards on the current page, read by a fixed script.
+const cardsOf = (session) => ab(session, ['eval', CARDS_JS]).then((o) => { try { return JSON.parse(JSON.parse(o)).map((c) => ({ ...parseCard(c), box: c.box })); } catch { return []; } });
+// A video's own public page gives its exact publish time, views, channel and the creator's tags.
+const pages = new Map(); // shortcut: unbounded in-memory cache, fine for a demo; add eviction if it runs for days
+const pageData = (id) => {
+  if (!pages.has(id)) pages.set(id, fetch(`https://www.youtube.com/watch?v=${id}`, { headers: { 'accept-language': 'en-US,en;q=0.9' } })
+    .then((r) => (r.ok ? r.text() : '')).then(videoFromHtml).catch(() => null));
+  return pages.get(id);
+};
+// Looks up many videos at once, 8 at a time.
+async function exact(cards) {
+  const out = [...cards];
+  let next = 0;
+  await Promise.all(Array.from({ length: 8 }, async () => { while (next < out.length) { const i = next++; out[i] = withPageData(out[i], await pageData(out[i].id)); } }));
+  return out;
+}
 // Where an element is on screen, so the cursor can go there before the agent clicks it.
 const boxOf = (session, sel) => ab(session, ['get', 'box', sel, '--json']).then((o) => {
   try { const d = JSON.parse(o.match(/\{.*\}/s)[0]).data; const b = d.box || d; return b.width ? { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height) } : null; } catch { return null; }
@@ -129,11 +124,32 @@ const TEMPLATE = {
     audio: str('Sound suggestion (trending audio name or style).'),
     sources: strs('URLs you saw as evidence.'),
     references: strs('1-3 YouTube video ids (11 characters) this template is based on.'),
+    pattern: str('The trend board pattern this template is based on, exactly as written in [brackets].'),
   },
   required: ['title', 'trend', 'fit', 'momentum', 'days_left', 'format', 'duration_s', 'hook', 'beats', 'caption', 'hashtags', 'audio', 'sources', 'references'],
 };
 
+const SEARCH_TOOLS = [
+  fn('search', 'Search YouTube for Shorts uploaded recently, collect every video with its exact age and views per hour, and update the trend board. Use many different searches.', {
+    query: str('What to search, e.g. "pov outfit" or "emergency fit pinoy". Short phrases work best.'),
+    when: { type: 'string', enum: ['today', 'week', 'month'], description: 'Upload date filter. Use "week" to discover, "today" to check a pattern is still picking up.' },
+    note: str('One short sentence shown to the user.'),
+  }),
+  fn('hashtag', 'Open a hashtag page: how many videos and channels use it, plus its videos. Use it on promising hashtag patterns.', {
+    tag: str('Without the #, e.g. "emergencyfit".'), note: str('One short sentence shown to the user.'),
+  }),
+  fn('inspect', 'Open one Short and read its description, tags, channel and exact numbers. Use it on the fastest video of a strong pattern.', {
+    id: str('The 11-character video id.'), note: str('One short sentence shown to the user.'),
+  }),
+  fn('judge', 'Mark a trend board pattern as confirmed or dropped, with a plain-language name and a short reason the user sees.', {
+    pattern: str('The pattern key exactly as written in [brackets].'),
+    status: { type: 'string', enum: ['confirmed', 'dropped'] },
+    name: str('What the trend is, in plain words, e.g. "Bag-drop outfit transitions".'),
+    reason: str('The evidence in a few words, e.g. "31 creators this week, still rising today" or "Only one creator".'),
+  }),
+];
 const CHAT_TOOLS = [
+  ...SEARCH_TOOLS,
   fn('browser', 'Run one agent-browser command. Examples: ["open","https://..."], ["get","text","main"], ["snapshot","-i","-c"], ["click","@e12"], ["scroll","down","1500"], ["back"], ["links"] (YouTube video ids and titles on this page).',
     { note: str('One short sentence shown to the user, e.g. "Checking what Filipinos searched in the last 48 hours".'), args: strs('') }),
   fn('submit_templates', 'Show video templates to the user. Ends your turn.', {
@@ -156,19 +172,20 @@ const PERSONA_FIELDS = {
   voice: str('How this persona writes: language mix, tone, emoji habits, recurring phrases.'),
   examples: strs('3 to 5 original example captions in this persona’s voice and language.'),
   avoid: strs('Content this persona never does.'),
-  refs: strs('2 or 3 YouTube video ids (11 characters) from your ["links"] output that best show the kind of content this persona makes. They become its picture.'),
+  refs: strs('2 or 3 YouTube video ids (11 characters) from your search results that best show the kind of content this persona makes. They become its picture.'),
 };
 const CREATE_TOOLS = [
-  CHAT_TOOLS[0],
+  SEARCH_TOOLS[0],
+  CHAT_TOOLS.find((t) => t.function.name === 'browser'),
   fn('create_persona', 'Create the persona the user described. Ends your turn.', PERSONA_FIELDS),
-  CHAT_TOOLS[2],
+  CHAT_TOOLS.find((t) => t.function.name === 'reply'),
 ];
 const CREATE_SYSTEM = `You are Persona Studio. The user is telling you what kind of content creator they want to become.
 Turn that into a persona they can grow into.
 
-First take 2 to 5 browser steps to ground it in what works right now; the user watches the browser live.
-Search YouTube Shorts in that niche (https://www.youtube.com/results?search_query=<niche>+shorts) and run ["links"],
-or, if they name a creator or paste a YouTube channel link, open its /shorts page and run ["links"].
+First ground it in what works right now; the user watches the browser live.
+Use "search" 2 or 3 times (when: "week") for that niche and its typical formats. If they name a creator or paste a YouTube channel link,
+use the browser tool to open its /shorts page and run ["links"].
 Then call create_persona, with 2 or 3 of the video ids you saw as its picture. Take what makes those creators work (formats, hooks, voice), never their identity or content.
 Write the example captions yourself, in the language and slang the user writes in (e.g. Taglish if they do).
 If the description is too vague to make anything good, call reply with one short question instead.
@@ -196,15 +213,21 @@ Match, don't force. A trend only counts if it fits the persona's niche and audie
 can work across niches, but then write a NEW idea for this persona, not the original video with different text.
 If nothing fits, say so and submit no templates. Put trends you rejected in "skipped" with a short reason.
 
-You control a real browser with the "browser" tool (agent-browser CLI). The user watches it live, so open real pages. Good public sources:
-- Google Trends, trending now: https://trends.google.com/trending?geo=${geo}&hours=48  (read with: get text main)
-- YouTube search: https://www.youtube.com/results?search_query=<topic>+shorts${region === 'WW' ? '' : `+${a.regionName.replace(/\s+/g, '+')}`}
-  add &sp=CAM%253D to sort by views, or &sp=CAISAhgB for newest uploads. If a page says "No results", drop the filter.
-- YouTube hashtag Shorts: https://www.youtube.com/hashtag/<tag>/shorts
+HOW TO FIND TRENDS: a deep search, not a single search. A trend is many creators adopting the same thing right now.
+A single popular video is not a trend, and anything older than two weeks is not evidence of a trend.
+1. Fan out: run "search" 6 to 10 times with when: "week". Mix the niche's words with the shapes trends take
+   ("pov", "but make it", "ranking", "storytime", "day in my life", "challenge", "trend", "transition", "outfit check", "rate my"),
+   in English and in the language this persona posts in. Short queries work best.
+2. Read the trend board in each search result: patterns shared by several fresh videos, with videos, creators and views per hour.
+3. Follow the thread on the 3 to 5 strongest patterns: "hashtag" for hashtag patterns (how many videos and channels use it),
+   "search" with when: "today" to see if it is still picking up, and "inspect" on its fastest video to learn the format and the sound.
+4. "judge" each one you followed: confirmed (many creators, fresh, still picking up) or dropped (too old, too small, one creator only, or wrong for this persona).
+5. Then submit_templates from the confirmed patterns only, setting "pattern" on each template and using the pattern's videos as references.
+   Quote the real numbers in "trend": creators, videos this week, views per hour. Momentum: rising if it is still picking up today,
+   peaking if it is big but slowing, saturated if it is everywhere and old.
+You also have the "browser" tool for anything else (e.g. Google Trends: https://trends.google.com/trending?geo=${geo}&hours=48, read with "get text main").
 TikTok, Instagram and Reddit block this browser: do not visit them. Never try to get past a CAPTCHA or login wall; move on.
 
-Work fast: about 6-12 browser calls for a fresh scout. Prefer "get text main" or "snapshot -i -c" over clicking around.
-On YouTube result pages run ["links"] to get video ids and titles. Note view counts and dates as evidence.
 For follow-ups ("make #2 shorter", "more like the first one") you usually don't need the browser: revise and call submit_templates again.
 When the user states a lasting preference about the persona, call update_persona, then continue.
 Each template is a format the creator reshoots with their own face and voice, never a copy of someone's video.
@@ -213,6 +236,7 @@ List the YouTube ids it is based on in "references". Write text and captions in 
 
 // ---------- one chat turn: the agent browses and answers ----------
 const busy = new Set();
+const UPLOADED = { today: 'EgIIAg%253D%253D', week: 'EgIIAw%253D%253D', month: 'EgIIBA%253D%253D' }; // YouTube's upload-date filter
 async function turn(thread, text, emit) {
   const account = thread.accountId ? await load('accounts', thread.accountId).catch(() => null) : null;
   let persona = thread.personaId ? await load('personas', thread.personaId).catch(() => null) : null;
@@ -232,14 +256,64 @@ async function turn(thread, text, emit) {
     step.shot = `/shots/${thread.id}/${name}`;
   };
   const endBrowse = async () => { if (browse) { await snap(); await add(browse); browse = null; } };
+  // One visible step in the live browser. The cursor needs the element's box for clicks, so look it up first.
+  const step = async (note, args, run) => {
+    if (!browse) { browse = { type: 'browse', steps: [], found: [], board: [] }; emit({ type: 'browse' }); }
+    if (!live) live = await liveBrowser(session, emit);
+    await snap(); // the previous step's page, now settled
+    const [cmd, sel] = args;
+    const box = ['click', 'fill'].includes(cmd) && typeof sel === 'string' ? await boxOf(session, sel) : null;
+    const st = { note, args, shot: null, ...(box && { box }) };
+    emit({ type: 'step', n: browse.steps.length + 1, ...st });
+    const out = await run(st);
+    st.url = live.url(); browse.steps.push(st);
+    return out;
+  };
+  // Collects the videos on the current page with exact numbers, shows them, and updates the trend board.
+  const pool = new Map(); // every video seen this turn
+  // `source` is the search or hashtag that surfaced these videos: a search is never evidence for its own words.
+  const collect = (note, source = '') => step(note, ['links'], async (st) => {
+    let cards = await cardsOf(session);
+    for (let i = 0; i < 6 && !cards.length; i++) { await new Promise((r) => setTimeout(r, 500)); cards = await cardsOf(session); } // results still rendering
+    st.boxes = cards.filter((c) => c.box).slice(0, 14).map(({ id, box: [x, y, w, h] }) => ({ id, x, y, w, h }));
+    const fresh = await exact(cards.filter((c) => !pool.has(c.id)));
+    for (const v of fresh) pool.set(v.id, { ...v, via: [] });
+    if (source) for (const c of cards) pool.get(c.id)?.via.push(source);
+    const items = fresh.map(({ id, title, stats, vph, ageH, views, channel }) => ({ id, title, stats, vph, ageH, views, channel }));
+    browse.found.push(...items.slice(0, Math.max(0, 60 - browse.found.length)));
+    emit({ type: 'found', items, boxes: st.boxes });
+    updateBoard();
+    return { cards: cards.map((c) => pool.get(c.id) || c), fresh: fresh.length };
+  });
+  // What the agent reads after collecting: the fastest fresh videos, then the trend board.
+  const listing = ({ cards, fresh }) => {
+    const sorted = [...cards].sort((a, b) => (a.ageH > FRESH_HOURS) - (b.ageH > FRESH_HOURS) || (b.vph || 0) - (a.vph || 0));
+    return `${cards.length} videos (${fresh} new to you):\n${sorted.slice(0, 14).map(videoLine).join('\n')}\n\nTrend board (patterns across everything you've collected):\n`
+      + (board.size ? [...board.values()].map((e) => patternLine(e, e)).join('\n') : '- nothing yet: patterns need 3+ fresh videos. Search more.');
+  };
+  // The trend board: patterns found so far, and the agent's verdicts on them.
+  const board = new Map();
+  const mark = (key, change) => { board.set(key, { key, status: 'checking', ...(board.get(key) || {}), ...change }); updateBoard(); };
+  function updateBoard() {
+    const found = patternsOf([...pool.values()]);
+    for (const [key, e] of board) if (e.status === 'checking' && !e.reach && !found.some((p) => p.key === key)) board.delete(key);
+    for (const p of found) board.set(p.key, { status: 'checking', ...(board.get(p.key) || {}), ...p });
+    // Keep it readable: everything judged, plus the strongest few still being checked.
+    const checking = [...board.values()].filter((e) => e.status === 'checking').sort((a, b) => (b.score || 0) - (a.score || 0));
+    for (const e of checking.slice(6)) if (!e.reach) board.delete(e.key);
+    if (browse) {
+      browse.board = [...board.values()].map(({ key, name, status, reason, reach, videos, week, channels, medianVph, ids }) => ({ key, name, status, reason, reach, videos, week, channels, medianVph, ids: (ids || []).slice(0, 4) }));
+      emit({ type: 'board', board: browse.board });
+    }
+  }
 
   await add({ type: 'user', text });
   if (!thread.llm.length || thread.llm[0].role !== 'system') thread.llm.unshift({ role: 'system', content: '' });
   thread.llm[0].content = prompt(); // always the latest account and persona
   thread.llm.push({ role: 'user', content: text });
   try {
-    for (let step = 1; step <= MAX_STEPS; step++) {
-      if (step === MAX_STEPS) thread.llm.push({ role: 'user', content: 'Out of time. Call submit_templates or reply now with what you have.' });
+    for (let round = 1; round <= MAX_STEPS; round++) {
+      if (round === MAX_STEPS) thread.llm.push({ role: 'user', content: 'Out of time. Call submit_templates or reply now with what you have.' });
       const msg = await openai(thread.llm, persona ? CHAT_TOOLS : CREATE_TOOLS);
       thread.llm.push(msg);
       let ended = false;
@@ -248,26 +322,34 @@ async function turn(thread, text, emit) {
         const name = call.function.name;
         let out = 'Shown to the user.';
         if (name === 'browser') {
-          if (!browse) { browse = { type: 'browse', steps: [] }; emit({ type: 'browse' }); }
-          if (!live) live = await liveBrowser(session, emit);
-          await snap(); // the previous step's page, now settled
-          const [cmd, sel] = input.args || [];
-          // Clicks and typing: find the element first, so the cursor is there when it happens (one quick lookup).
-          const box = ['click', 'fill'].includes(cmd) && typeof sel === 'string' && ALLOWED.has(cmd) ? await boxOf(session, sel) : null;
-          const step = { note: input.note, args: input.args, shot: null, ...(box && { box }) };
-          emit({ type: 'step', n: browse.steps.length + 1, ...step });
-          if (cmd === 'links' && Array.isArray(input.args)) {
-            const r = await linksFull(session);
-            out = r.text; step.boxes = r.boxes || [];
-            // Show what the agent found as it finds it.
-            const seen = new Set((browse.found ||= []).map((v) => v.id));
-            const fresh = parseLinks(out).filter((v) => !seen.has(v.id)).slice(0, 30 - browse.found.length);
-            if (fresh.length) browse.found.push(...fresh);
-            emit({ type: 'found', items: fresh, boxes: step.boxes });
-          } else out = await browser(session, input.args);
-          step.url = live.url();
-          browse.steps.push(step);
-          await snap();
+          const [cmd] = input.args || [];
+          out = cmd === 'links' && Array.isArray(input.args) ? listing(await collect(input.note, live?.url() || 'page')) : await step(input.note, input.args, () => browser(session, input.args));
+        } else if (name === 'search') {
+          const when = ['today', 'week', 'month'].includes(input.when) ? input.when : 'week';
+          const q = String(input.query || '').slice(0, 100);
+          await step(input.note || `Searching "${q}"`, ['open', `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}&sp=${UPLOADED[when]}`], (st) => browser(session, st.args));
+          const got = await collect(`Collecting ${when === 'today' ? "today's" : `this ${when}'s`} videos for "${q}"`, q);
+          out = `Searched "${q}" (uploaded ${when === 'today' ? 'today' : 'this ' + when}).\n` + listing(got);
+        } else if (name === 'hashtag') {
+          const tag = String(input.tag || '').replace(/^#/, '').replace(/[^\p{L}\p{N}_]/gu, '').slice(0, 60);
+          await step(input.note || `Opening #${tag}`, ['open', `https://www.youtube.com/hashtag/${encodeURIComponent(tag)}`], (st) => browser(session, st.args));
+          const reach = (await ab(session, ['eval', REACH_JS]).then((o) => { try { return JSON.parse(JSON.parse(o)); } catch { return ''; } })).split('\n').find((l) => /videos/.test(l)) || '';
+          if (reach) mark('#' + tag.toLowerCase(), { reach });
+          const got = await collect(`Reading who uses #${tag}`, tag);
+          out = `#${tag}: ${reach || 'no reach shown'}.\n` + listing(got);
+        } else if (name === 'inspect') {
+          const id = String(input.id || '').slice(0, 11);
+          if (!/^[\w-]{11}$/.test(id)) out = 'Give an 11-character video id.';
+          else {
+            await step(input.note || 'Watching the fastest video', ['open', `https://www.youtube.com/shorts/${id}`], (st) => browser(session, st.args));
+            const v = pool.get(id) || withPageData({ id, title: '', views: null, ageH: null }, await pageData(id));
+            const page = await pageData(id);
+            out = page ? `${videoLine({ ...v, ...withPageData(v, page) })}\nTags: ${page.tags.join(', ') || 'none'}\nDescription: ${page.description || 'none'}` : 'Could not read that video.';
+          }
+        } else if (name === 'judge') {
+          const key = String(input.pattern || '').replace(/^\[|\]$/g, '');
+          mark(key, { status: input.status === 'confirmed' ? 'confirmed' : 'dropped', name: String(input.name || '').slice(0, 80), reason: String(input.reason || '').slice(0, 160) });
+          out = 'Noted on the trend board.';
         } else if (name === 'update_persona') {
           if (input.avoid?.length) persona.avoid = [...new Set([...(persona.avoid || []), ...input.avoid])];
           if (input.voice) persona.voice = input.voice;

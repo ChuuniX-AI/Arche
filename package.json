@@ -1,10 +1,11 @@
 {
   "name": "manilahack",
   "version": "1.0.0",
-  "description": "Ad Guy: agentic trend scout that turns what is viral into video templates",
+  "description": "Persona Studio: an agentic trend scout that finds what's viral for the creator you want to be, as video templates",
   "main": "server.js",
   "scripts": {
-    "start": "node --env-file-if-exists=.env server.js"
+    "start": "node --env-file-if-exists=.env server.js",
+    "test": "node --test"
   },
   "keywords": [],
   "author": "",
