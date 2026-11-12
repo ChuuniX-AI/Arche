@@ -31,10 +31,20 @@ const newId = () => Date.now().toString(36) + crypto.randomBytes(3).toString('he
 // Only page-reading and navigation commands. No eval, cookies, storage or downloads.
 const ALLOWED = new Set(['links', 'open', 'snapshot', 'click', 'fill', 'press', 'scroll', 'get', 'back', 'wait', 'find']);
 
-// The fixed page script behind the "links" command: lists the YouTube videos on the current page.
-const LINKS_JS = `JSON.stringify([...new Map([...document.querySelectorAll('a[href*="/shorts/"],a[href*="watch?v="]')]
-  .map(a => [(a.href.match(/(?:shorts\\/|v=)([\\w-]{11})/) || [])[1], (a.getAttribute('aria-label') || a.title || a.textContent || '').trim().replace(/\\s+/g, ' ')])
-  .filter(([id, t]) => id && t.length > 12)).entries()].slice(0, 25).map(([id, t]) => id + ' | ' + t.slice(0, 160)).join('\\n'))`;
+// The fixed page script behind the "links" command: lists the YouTube videos on the current page as
+// "id | title | 9.2M views · 1y ago", reading each result card's text.
+const LINKS_JS = `JSON.stringify([...new Map([...document.querySelectorAll('a[href*="/shorts/"],a[href*="watch?v="]')].map((a) => {
+  const id = (a.href.match(/(?:shorts\\/|v=)([\\w-]{11})/) || [])[1];
+  const card = a.closest('ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2, ytd-video-renderer, ytd-rich-item-renderer, ytd-reel-item-renderer, ytd-grid-video-renderer');
+  const lines = ((card && card.innerText) || a.getAttribute('aria-label') || a.title || a.textContent || '').split(String.fromCharCode(10))
+    .map((l) => l.trim()).filter((l) => l && l !== 'New' && l !== 'Shorts' && l !== 'Now playing');
+  const stats = lines.find((l) => / views/.test(l)) || '';
+  const title = lines.filter((l) => l !== stats && !/^[\\d:]+$/.test(l)).sort((x, y) => y.length - x.length)[0] || '';
+  return [id, title.slice(0, 140) + ' | ' + stats.slice(0, 60)];
+}).filter(([id, t]) => id && t.length > 6)).entries()].slice(0, 25).map(([id, t]) => id + ' | ' + t).join('\\n'))`;
+// Parses links output back into videos, for the findings shelf.
+const parseLinks = (out) => String(out).split('\n').map((l) => l.split(' | ')).filter(([id]) => /^[\w-]{11}$/.test(id))
+  .map(([id, title = '', stats = '']) => ({ id, title: title.slice(0, 140), stats: stats.slice(0, 60) }));
 
 function browser(session, args) {
   if (!Array.isArray(args) || !ALLOWED.has(args[0])) return `Command not allowed. Use one of: ${[...ALLOWED].join(', ')}`;
@@ -232,6 +242,12 @@ async function turn(thread, text, emit) {
           await snap(); // the previous step's page, now settled
           emit({ type: 'step', n: browse.steps.length + 1, note: input.note, args: input.args });
           out = await browser(session, input.args);
+          if (input.args?.[0] === 'links') {
+            // Show what the agent found as it finds it.
+            const seen = new Set((browse.found ||= []).map((v) => v.id));
+            const fresh = parseLinks(out).filter((v) => !seen.has(v.id)).slice(0, 30 - browse.found.length);
+            if (fresh.length) { browse.found.push(...fresh); emit({ type: 'found', items: fresh }); }
+          }
           browse.steps.push({ note: input.note, args: input.args, shot: null });
           await snap();
         } else if (name === 'update_persona') {
@@ -310,6 +326,14 @@ http.createServer(async (req, res) => {
         return json(res, persona);
       }
       return json(res, (await list('personas')).sort((a, b) => a.starter - b.starter || a.created - b.created));
+    }
+    if (api === 'api' && kind === 'personas' && id && req.method === 'GET') {
+      // A persona's profile: the persona, plus every set of templates made for it, newest first.
+      const persona = await load('personas', id);
+      const made = (await list('threads')).filter((t) => t.personaId === id).sort((a, b) => b.updated - a.updated)
+        .flatMap((t) => t.items.filter((it) => it.type === 'templates' && it.templates.length).reverse()
+          .map((it) => ({ threadId: t.id, title: t.title, templates: it.templates })));
+      return json(res, { persona, made });
     }
     if (api === 'api' && kind === 'accounts' && !id) {
       if (req.method === 'POST') {

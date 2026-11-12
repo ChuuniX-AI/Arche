@@ -50,7 +50,9 @@ button { cursor: pointer; background: none; border: 0; }
 .top { display: flex; align-items: center; gap: 12px; padding: 14px 24px; min-height: 58px; }
 .top .ttl { flex: 1; min-width: 0; display: grid; }
 .top .ttl b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.top .ttl small { color: var(--dim); font-size: 12.5px; }
+.top .ttl .who { justify-self: start; max-width: 100%; color: var(--dim); font-size: 12.5px; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.top .ttl .who:not(:disabled):hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.top .ttl .who:disabled { cursor: default; }
 .icon { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; flex: none; }
 .icon:hover { background: var(--raise); }
 .icon svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 1.8; fill: none; }
@@ -94,6 +96,51 @@ details.browse li { display: grid; grid-template-columns: 120px 1fr; gap: 14px; 
 details.browse li a, details.browse li .noimg { width: 120px; aspect-ratio: 16 / 10; border-radius: 6px; box-shadow: 0 0 0 1px var(--line); background: var(--panel) center top / cover; }
 details.browse li span { color: var(--ink); }
 details.browse li .noimg { visibility: hidden; aspect-ratio: auto; height: 0; }
+
+/* What the agent found while browsing */
+.log > * { min-width: 0; } /* long shelves and card rows scroll inside, never widen the chat */
+.ghost { position: fixed; z-index: 50; transform-origin: 0 0; background: var(--raise) center / cover; pointer-events: none; box-shadow: 0 18px 40px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.15); }
+.found { margin-top: 12px; }
+.flabel { font-size: 12.5px; color: var(--dim); margin-bottom: 8px; }
+.flabel b { color: var(--ink); font-weight: 500; }
+.shelf { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 8px; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.fv { flex: none; width: 66px; display: grid; gap: 5px; color: var(--dim); font-size: 11px; text-decoration: none; animation: slidein .5s cubic-bezier(.2,1.25,.4,1) both; animation-delay: var(--d, 0ms); }
+.fv i { aspect-ratio: 9 / 16; border-radius: 8px; background: var(--raise) center / cover; box-shadow: 0 0 0 1px var(--line); transition: transform .15s; }
+.fv:hover i { transform: translateY(-2px); }
+.fv span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.fv.used i { box-shadow: 0 0 0 2px var(--blue); }
+.fv.used span { color: var(--ink); }
+.shelf.static .fv { animation: none; }
+@keyframes slidein { from { opacity: 0; transform: translateY(16px) scale(.8); } }
+
+/* The card grows into the phone */
+.phone { view-transition-name: reel; }
+::view-transition-group(reel) { animation-duration: .5s; animation-timing-function: cubic-bezier(.2,.8,.2,1); }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .25s; }
+
+/* Persona profile: the creator you're becoming */
+#profile { flex: 1; min-height: 0; overflow-y: auto; padding: 0 24px 48px; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.prof { max-width: 880px; margin: 0 auto; }
+.banner { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; aspect-ratio: 3 / 1; border-radius: 22px; overflow: hidden; background: color-mix(in srgb, var(--pc) 30%, #0b0c0f); }
+.banner i { background: center 28% / cover; }
+.banner::after { content: ''; position: absolute; inset: 0; background: linear-gradient(transparent 45%, rgba(0,0,0,.85)); }
+.phead { position: relative; display: grid; grid-template-columns: auto 1fr auto; gap: 18px; align-items: end; margin: -46px 20px 0; z-index: 1; }
+.pav { display: grid; place-items: center; font-family: var(--display); font-weight: 800; line-height: 1; color: #000; }
+.pav.big { width: 92px; height: 92px; border-radius: 50%; font-size: 32px; box-shadow: 0 0 0 5px var(--bg); }
+.phead h1 { font: 800 clamp(28px, 4vw, 44px)/1 var(--display); letter-spacing: -.03em; text-wrap: balance; }
+.phead p { color: var(--dim); margin-top: 6px; max-width: 52ch; }
+.pchips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.pchips span { font-size: 12px; padding: 3px 10px; border-radius: 999px; background: var(--raise); box-shadow: 0 0 0 1px var(--line); color: var(--dim); }
+.pchips span.yes { color: var(--ink); box-shadow: 0 0 0 1px var(--pc); }
+.pacts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; padding-bottom: 4px; }
+.pgrid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 28px; margin-top: 36px; }
+.pgrid h3, .made h3 { font-size: 13px; font-weight: 500; color: var(--dim); margin-bottom: 10px; }
+.pgrid section + section { margin-top: 22px; }
+.quotes { list-style: none; padding: 0; display: grid; gap: 8px; justify-items: start; }
+.quotes li { font: 800 15px/1.45 var(--display); background: #fff; color: #000; padding: 4px 10px; border-radius: 7px; max-width: 100%; }
+.made { margin-top: 40px; }
+.made .empty { color: var(--dim); }
+.made .cards { flex-wrap: wrap; overflow: visible; }
 
 /* Results */
 .result > p { max-width: 64ch; margin-bottom: 14px; }
@@ -258,6 +305,12 @@ dialog .btns.split { justify-content: flex-start; }
   .player { position: static; }
 }
 @media (max-width: 860px) {
+  #profile { padding: 0 16px 40px; }
+  .banner { aspect-ratio: 2 / 1; border-radius: 16px; }
+  .phead { grid-template-columns: auto 1fr; align-items: start; margin: -36px 8px 0; }
+  .pav.big { width: 72px; height: 72px; font-size: 26px; }
+  .pacts { grid-column: 1 / -1; justify-content: flex-start; }
+  .pgrid { grid-template-columns: 1fr; }
   .app { grid-template-columns: 1fr; }
   .side { position: fixed; inset: 0 auto 0 0; width: min(300px, 86vw); z-index: 30; transform: translateX(-100%); transition: transform .25s; }
   .side.open { transform: none; box-shadow: 0 0 0 100vmax rgba(0,0,0,.6); }
@@ -290,8 +343,8 @@ dialog .btns.split { justify-content: flex-start; }
   <main class="main">
     <header class="top">
       <button class="icon" id="menu" aria-label="Show threads"><svg viewBox="0 0 18 18"><path d="M2 5h14M2 9h14M2 13h14"/></svg></button>
-      <div class="ttl"><b id="title"></b><small id="who"></small></div>
-      <button class="quiet" id="back" hidden>Back to thread</button>
+      <div class="ttl"><b id="title"></b><button class="who" id="who" disabled></button></div>
+      <button class="quiet" id="back" hidden>Back</button>
       <button class="quiet" id="del" hidden>Delete thread</button>
     </header>
 
@@ -315,6 +368,8 @@ dialog .btns.split { justify-content: flex-start; }
         <div class="suggest" id="suggest"></div>
       </div>
     </section>
+
+    <section id="profile" hidden><div class="prof" id="prof"></div></section>
 
     <section id="studio" hidden>
       <div class="studio">
@@ -415,7 +470,8 @@ const PCOLORS = ['#3d6bff', '#ffb547', '#3ddc97', '#ff7ab6', '#b38cff', '#4fd1ff
 const personaById = (id) => personas.find((p) => p.id === id) || null;
 const accountById = (id) => accounts.find((a) => a.id === id) || null;
 const accountsOf = (p) => accounts.filter((a) => a.personaId === p?.id);
-const pcolor = (p) => PCOLORS[Math.max(0, personas.indexOf(p)) % PCOLORS.length];
+// Colour by creation order, so adding a persona never changes the others' colours.
+const pcolor = (p) => PCOLORS[Math.max(0, [...personas].sort((a, b) => a.created - b.created).findIndex((x) => x.id === p?.id)) % PCOLORS.length];
 function setAccount(a) { account = a; persona = personaById(a?.personaId); }
 
 async function refresh() {
@@ -452,13 +508,13 @@ function boardHTML(p, { tag = 'button', attrs = '' } = {}) {
 
 function renderGallery() {
   $('#gallery').innerHTML = personas.map((p) => `<div class="pwrap${persona?.id === p.id ? ' on' : ''}">
-    ${boardHTML(p, { attrs: `type="button" data-p="${esc(p.id)}" aria-pressed="${persona?.id === p.id}" aria-label="Start as ${esc(p.name)}"` })}
+    ${boardHTML(p, { attrs: `type="button" data-p="${esc(p.id)}" aria-pressed="${persona?.id === p.id}" aria-label="${esc(p.name)}: open profile"` })}
     <button type="button" class="pedit" data-edit="${esc(p.id)}" aria-label="Edit ${esc(p.name)}">Edit</button></div>`).join('');
 }
 $('#gallery').onclick = (e) => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.dataset.edit) return openPersona(personaById(b.dataset.edit));
-  pickPersona(personaById(b.dataset.p));
+  openProfile(b.dataset.p);
 };
 // Choosing a persona picks the account that posts as it, or asks which account should.
 function pickPersona(p) {
@@ -470,7 +526,7 @@ function pickPersona(p) {
 
 // ---------- views ----------
 function newThread() {
-  thread = null; live = null; closeStudio();
+  thread = null; live = null; closeStudio(); view('chat');
   setAccount(accountById(store.get('account')));
   $('#title').textContent = 'New thread'; $('#who').textContent = '';
   $('#log').innerHTML = ''; $('#scroll').hidden = true; $('#hero').hidden = false; $('#del').hidden = true;
@@ -479,7 +535,7 @@ function newThread() {
 }
 function dock() { $('.dock').append($('#composer'), $('#suggest')); $('.dock').hidden = false; }
 async function openThread(id) {
-  closeStudio(); live = null;
+  closeStudio(); view('chat'); live = null;
   thread = await api('/api/threads/' + encodeURIComponent(id));
   account = accountById(thread.accountId); persona = personaById(thread.personaId);
   header();
@@ -487,7 +543,7 @@ async function openThread(id) {
   showAcct(); markThread(); render(); scrollEnd(); $('#side').classList.remove('open');
 }
 function header() {
-  $('#title').textContent = thread.title;
+  $('#title').textContent = thread.title; $('#who').disabled = !persona;
   $('#who').textContent = account ? `${account.name} as ${persona?.name || 'no persona'} · ${account.regionName}` : persona ? `${persona.name} · not on an account yet` : 'New persona';
 }
 function markThread() { document.querySelectorAll('.th').forEach((b) => b.setAttribute('aria-current', String(b.dataset.id === thread?.id))); }
@@ -504,8 +560,16 @@ function newPersonaHTML(p) {
       <dl>${p.niche ? `<dt>Niche</dt><dd>${esc(p.niche)}</dd>` : ''}${p.audience ? `<dt>Audience</dt><dd>${esc(p.audience)}</dd>` : ''}${p.voice ? `<dt>Voice</dt><dd>${esc(p.voice)}</dd>` : ''}</dl>
       <div class="btns"><button type="button" class="primary" data-say="Find what's viral for ${esc(p.name)} right now">Find what's viral now</button>
         ${mine ? `<span class="bound">Posting on ${esc(mine.name)}</span>` : `<button type="button" class="secondary" data-bind="${esc(p.id)}">Put on an account</button>`}
-        <button type="button" class="quiet" data-editp="${esc(p.id)}">Edit</button></div></div></div>`;
+        <button type="button" class="quiet" data-profile="${esc(p.id)}">Profile</button></div></div></div>`;
 }
+// Videos the agent found while browsing. The ones a template is based on get a ring.
+const views = (v) => (v.stats || '').split('·')[0].trim();
+const fvHTML = (v, used, delay = 0) => `<a class="fv${used?.has(v.id) ? ' used' : ''}" href="https://www.youtube.com/shorts/${esc(v.id)}" target="_blank" rel="noopener"
+  title="${esc(v.title)}${v.stats ? ' · ' + esc(v.stats) : ''}" style="--d:${delay}ms"><i style="background-image:url('/api/thumb?id=${esc(v.id)}')"></i>${views(v) ? `<span>${esc(views(v))}</span>` : ''}</a>`;
+// Videos a template is based on, or that became a persona's picture.
+const usedRefs = () => new Set(thread.items.flatMap((it) => it.type === 'newpersona' ? (personaById(it.personaId) || it.persona)?.refs || []
+  : (it.templates || []).flatMap((t) => t.references || [])));
+
 function itemHTML(it, idx) {
   if (it.type === 'user') return `<div class="you">${esc(it.text)}</div>`;
   if (it.type === 'reply') return `<div class="reply">${esc(it.text)}</div>`;
@@ -516,15 +580,20 @@ function itemHTML(it, idx) {
     const shots = it.steps.filter((s) => s.shot);
     return `<details class="browse"><summary><svg class="chev" viewBox="0 0 12 12"><path d="M4 2l4 4-4 4"/></svg>Browsed ${it.steps.length} step${it.steps.length === 1 ? '' : 's'}
       <span class="film">${shots.slice(0, 6).map((s) => `<img src="${esc(s.shot)}" alt="">`).join('')}</span></summary>
-      <ol>${it.steps.map((s) => `<li>${s.shot ? `<a href="${esc(s.shot)}" target="_blank" rel="noopener" aria-label="Open screenshot" style="background-image:url('${esc(s.shot)}')"></a>` : '<span class="noimg"></span>'}<span>${esc(s.note || s.args?.join(' '))}</span></li>`).join('')}</ol></details>`;
+      <ol>${it.steps.map((s) => `<li>${s.shot ? `<a href="${esc(s.shot)}" target="_blank" rel="noopener" aria-label="Open screenshot" style="background-image:url('${esc(s.shot)}')"></a>` : '<span class="noimg"></span>'}<span>${esc(s.note || s.args?.join(' '))}</span></li>`).join('')}</ol></details>
+      ${it.found?.length ? foundHTML(it.found) : ''}`;
   }
   if (it.type === 'templates') {
     return `<div class="result"><p>${esc(it.message)}</p>
-      ${it.templates.length ? `<div class="cards">${it.templates.map((t, j) => `<button class="card" data-r="${idx}" data-i="${j}" style="--c:${COLOR[t.momentum]}">
+      ${it.templates.length ? `<div class="cards">${it.templates.map((t, j) => `<button class="card" data-r="${idx}" data-i="${j}" data-sel='#log .card[data-r="${idx}"][data-i="${j}"]' style="--c:${COLOR[t.momentum]}">
         <span class="th9"${thumb(t)}><span class="tag">${esc(label(t))}</span></span><b>${esc(t.title)}</b><small>${esc(t.fit || t.trend)}</small></button>`).join('')}</div>` : ''}
       ${it.skipped?.length ? `<details class="skipped"><summary>Skipped ${it.skipped.length} that don't fit</summary><ul>${it.skipped.map((s) => `<li><b>${esc(s.trend)}</b>: ${esc(s.reason)}</li>`).join('')}</ul></details>` : ''}</div>`;
   }
   return '';
+}
+function foundHTML(found) {
+  const used = usedRefs(), n = found.filter((v) => used.has(v.id)).length;
+  return `<div class="found"><p class="flabel"><b>${found.length} videos found</b>${n ? ` · ${n} used` : ''}</p><div class="shelf static">${found.map((v) => fvHTML(v, used)).join('')}</div></div>`;
 }
 function render() {
   $('#log').innerHTML = thread.items.map(itemHTML).join('') + (busy ? liveHTML() : '');
@@ -534,7 +603,9 @@ function liveHTML() {
   const note = live.steps.at(-1)?.note || 'Opening a browser…';
   return `<div class="browse" id="live"><p class="step"><span class="spin"></span><span id="liveNote">${esc(note)}</span></p>
     <div class="window"><div class="chrome"><span class="lights"><i></i><i></i><i></i></span><span class="addr" id="liveAddr">${esc(host(live.url) || 'Agent browser')}</span><span class="live-dot">Live</span></div>
-    <div class="view"><img id="liveFrame" alt="The agent's browser, live"${live.frame ? ` src="${live.frame}"` : ' hidden'}><div class="wait" id="liveWait"${live.frame ? ' hidden' : ''}>Opening a browser…</div></div></div></div>`;
+    <div class="view"><img id="liveFrame" alt="The agent's browser, live"${live.frame ? ` src="${live.frame}"` : ' hidden'}><div class="wait" id="liveWait"${live.frame ? ' hidden' : ''}>Opening a browser…</div></div></div>
+    <div class="found" id="liveFound"${live.found.length ? '' : ' hidden'}><p class="flabel"><b id="liveCount">${live.found.length} videos found</b> so far</p>
+      <div class="shelf static" id="liveShelf">${live.found.map((v) => fvHTML(v)).join('')}</div></div></div>`;
 }
 // Paints a live frame straight into the <img> showing the browser.
 function paint(img, waitEl, data) { img.src = 'data:image/jpeg;base64,' + data; img.hidden = false; if (waitEl) waitEl.hidden = true; }
@@ -555,13 +626,22 @@ async function send(text) {
   try {
     await stream(`/api/threads/${encodeURIComponent(thread.id)}/say`, { text }, onEvent);
   } catch (e) { thread.items.push({ type: 'error', text: e.message }); }
+  await boardDone.catch(() => {}); // let a persona board finish landing before the chat re-renders
   busy = false; live = null; $('#send').disabled = false;
   const id = thread.id;
   await refresh();
   if (thread?.id === id) { thread = await api('/api/threads/' + encodeURIComponent(id)); persona = personaById(thread.personaId); header(); showAcct(); render(); scrollEnd(); }
 }
 function onEvent(ev) {
-  if (ev.type === 'browse') { live = { steps: [], url: '' }; render(); scrollEnd(); }
+  if (ev.type === 'browse') { live = { steps: [], url: '', found: [] }; render(); scrollEnd(); }
+  else if (ev.type === 'found' && live) {
+    live.found.push(...ev.items);
+    if (!$('#liveShelf')) return;
+    $('#liveShelf').classList.remove('static');
+    $('#liveShelf').insertAdjacentHTML('beforeend', ev.items.map((v, i) => fvHTML(v, null, i * 70)).join(''));
+    $('#liveShelf').scrollTo({ left: $('#liveShelf').scrollWidth, behavior: still ? 'auto' : 'smooth' });
+    $('#liveCount').textContent = `${live.found.length} videos found`; $('#liveFound').hidden = false; scrollEnd();
+  }
   else if (ev.type === 'step') {
     live.steps.push(ev);
     if (ev.args?.[0] === 'open') live.url = ev.args[1];
@@ -569,10 +649,37 @@ function onEvent(ev) {
   } else if (ev.type === 'url' && live) { live.url = ev.url; if ($('#liveAddr')) $('#liveAddr').textContent = host(ev.url); }
   else if (ev.type === 'frame' && live) { live.frame = 'data:image/jpeg;base64,' + ev.data; if ($('#liveFrame')) paint($('#liveFrame'), $('#liveWait'), ev.data); }
   else if (['templates', 'reply', 'persona', 'newpersona', 'error'].includes(ev.type)) {
-    if (live && ev.type !== 'persona') { thread.items.push({ type: 'browse', steps: live.steps.map((s) => ({ note: s.note, args: s.args })) }); live = null; }
+    if (live && ev.type !== 'persona') { thread.items.push({ type: 'browse', steps: live.steps.map((s) => ({ note: s.note, args: s.args })), found: live.found }); live = null; }
     if (ev.type === 'newpersona') { personas.push(ev.persona); persona = ev.persona; thread.personaId = ev.persona.id; thread.title = ev.persona.name; header(); }
     thread.items.push(ev); render(); scrollEnd();
+    if (ev.type === 'newpersona') boardDone = buildBoard(ev.persona);
   }
+}
+// When the agent creates a persona, the frames it picked fly from the shelf of found videos into its board, one by one.
+let boardDone = Promise.resolve();
+function buildBoard(p) {
+  const card = [...document.querySelectorAll('#log .newp')].at(-1), refs = (p.refs || []).filter((r) => /^[\w-]{11}$/.test(r));
+  if (!card || still || !refs.length || !card.animate) return Promise.resolve();
+  return Promise.all([...card.querySelectorAll('.mosaic i')].map((cell, k) => {
+    const id = refs[k]; if (!id) return;
+    const bg = cell.style.backgroundImage; cell.style.backgroundImage = 'none';
+    const land = () => { cell.style.backgroundImage = bg; cell.animate([{ transform: 'scale(.9)', filter: 'brightness(1.8)' }, { transform: 'none', filter: 'none' }], { duration: 500, easing: 'cubic-bezier(.2,1.4,.4,1)' }); };
+    const src = [...document.querySelectorAll('#log .fv')].reverse().find((a) => a.href.endsWith('/' + id));
+    src?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    const from = src?.querySelector('i').getBoundingClientRect(), shelf = src?.parentElement.getBoundingClientRect(), view = $('#scroll').getBoundingClientRect();
+    const visible = from && from.left >= shelf.left - 1 && from.right <= shelf.right + 1 && from.top >= view.top && from.bottom <= view.bottom;
+    if (!visible) return new Promise((r) => setTimeout(() => { land(); r(); }, 300 + k * 180)); // not on screen: just land in place
+    const to = cell.getBoundingClientRect(), dx = to.left - from.left, dy = to.top - from.top, sx = to.width / from.width, sy = to.height / from.height;
+    const ghost = document.createElement('div');
+    ghost.className = 'ghost';
+    Object.assign(ghost.style, { left: from.left + 'px', top: from.top + 'px', width: from.width + 'px', height: from.height + 'px', backgroundImage: bg });
+    document.body.append(ghost);
+    return ghost.animate([
+      { transform: 'none', borderRadius: '8px' },
+      { transform: `translate(${dx * 0.5}px, ${dy * 0.5 - 60}px) scale(${(1 + sx) / 2}, ${(1 + sy) / 2})`, offset: 0.5 },
+      { transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`, borderRadius: '2px' },
+    ], { duration: 800, delay: 250 + k * 200, easing: 'cubic-bezier(.5,0,.25,1)', fill: 'both' }).finished.then(() => { ghost.remove(); land(); });
+  }));
 }
 const grow = () => { const t = $('#input'); t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; };
 $('#input').oninput = grow;
@@ -584,8 +691,50 @@ $('#log').onclick = (e) => {
   if (b.dataset.say) return send(b.dataset.say);
   if (b.dataset.bind) return openAccountSheet({ personaId: b.dataset.bind, bindThread: thread.id });
   if (b.dataset.editp) return openPersona(personaById(b.dataset.editp));
-  if (b.matches('.card')) openStudio(thread.items[+b.dataset.r].templates, +b.dataset.i);
+  if (b.dataset.profile) return openProfile(b.dataset.profile);
+  if (b.matches('.card')) playFrom(b, thread.items[+b.dataset.r].templates, +b.dataset.i, 'chat');
 };
+
+
+// ---------- persona profile: the creator you're becoming ----------
+let profileId = null, profileFrom = 'chat', made = [];
+async function openProfile(id) {
+  const data = await api('/api/personas/' + encodeURIComponent(id)).catch((e) => toast(e.message));
+  if (!data) return;
+  const p = data.persona, on = accountsOf(p), refs = (p.refs || []).filter((r) => /^[\w-]{11}$/.test(r));
+  if ($('#profile').hidden) profileFrom = $('#studio').hidden ? 'chat' : 'studio';
+  profileId = id; made = data.made;
+  const cards = made.flatMap((m, k) => m.templates.map((t, j) => `<button class="card" data-m="${k}" data-i="${j}" data-sel='#prof .card[data-m="${k}"][data-i="${j}"]' style="--c:${COLOR[t.momentum]}">
+    <span class="th9"${thumb(t)}><span class="tag">${esc(label(t))}</span></span><b>${esc(t.title)}</b><small>${esc(m.title)}</small></button>`)).join('');
+  $('#prof').style.setProperty('--pc', pcolor(p));
+  $('#prof').innerHTML = `<div class="banner">${refs.map((r) => `<i style="background-image:url('/api/thumb?id=${esc(r)}')"></i>`).join('')}</div>
+    <div class="phead"><span class="pav big" style="background:var(--pc)">${esc(initials(p.name))}</span>
+      <div><h1>${esc(p.name)}</h1>${p.tagline ? `<p>${esc(p.tagline)}</p>` : ''}
+        <div class="pchips">${on.length ? on.map((a) => `<span class="yes">${esc(a.name)} · ${esc(a.platform)}</span>`).join('') : '<span>Not on an account yet</span>'}${p.niche ? `<span>${esc(p.niche)}</span>` : ''}</div></div>
+      <div class="pacts"><button type="button" class="primary" data-start>Start a thread</button>
+        <button type="button" class="secondary" data-pbind>${on.length ? 'Add an account' : 'Put on an account'}</button><button type="button" class="quiet" data-pedit>Edit</button></div></div>
+    <div class="pgrid">
+      <div>${p.examples?.length ? `<section><h3>Sounds like</h3><ul class="quotes">${p.examples.map((e) => `<li>${esc(e)}</li>`).join('')}</ul></section>` : ''}</div>
+      <div>${p.voice ? `<section><h3>Voice</h3><p>${esc(p.voice)}</p></section>` : ''}
+        ${p.audience ? `<section><h3>Audience</h3><p>${esc(p.audience)}</p></section>` : ''}
+        ${p.avoid?.length ? `<section><h3>Never posts</h3><p>${esc(p.avoid.join(', '))}</p></section>` : ''}</div></div>
+    <section class="made"><h3>Made for ${esc(p.name)}</h3>${cards ? `<div class="cards">${cards}</div>` : '<p class="empty">Nothing yet. Start a thread and the agent will find what\'s viral for this persona.</p>'}</section>`;
+  const show = () => { if (!$('#studio').hidden) { player.stop(); develop.stop(); cur = -1; } view('profile'); $('#profile').scrollTop = 0; $('#title').textContent = p.name; $('#who').textContent = ''; $('#who').disabled = true; $('#side').classList.remove('open'); };
+  $('#profile').hidden ? vt(show) : show();
+}
+function closeProfile() {
+  view(profileFrom === 'studio' ? 'studio' : 'chat');
+  if (thread) header(); else { $('#title').textContent = 'New thread'; $('#who').textContent = ''; }
+}
+$('#prof').onclick = (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  const p = personaById(profileId);
+  if ('start' in b.dataset) { newThread(); return pickPersona(p); }
+  if ('pbind' in b.dataset) return openAccountSheet({ personaId: p.id });
+  if ('pedit' in b.dataset) return openPersona(p);
+  if (b.matches('.card')) playFrom(b, made[+b.dataset.m].templates, +b.dataset.i, 'profile');
+};
+$('#who').onclick = () => persona && openProfile(persona.id);
 
 // ---------- account picker ----------
 function openPop() {
@@ -641,6 +790,7 @@ $('#aform').onsubmit = async (e) => {
     if (binding) await post(`/api/threads/${encodeURIComponent(binding)}/bind`, { accountId: a.id });
     await refresh();
     toast(`${a.name} posts as ${personaById(a.personaId)?.name}`);
+    if (!$('#profile').hidden) openProfile(profileId);
     if (binding && thread?.id === binding) { binding = null; return openThread(thread.id); }
     if (!thread) { setAccount(accountById(a.id)); store.set('account', a.id); renderGallery(); $('#input').focus(); }
     showAcct();
@@ -668,6 +818,7 @@ $('#pform').onsubmit = async (e) => {
     });
     $('#dlg').close(); await refresh();
     if (thread) render(); else renderGallery();
+    if (!$('#profile').hidden) openProfile(p.id);
     showAcct(); toast(`Saved ${p.name}`);
   } catch (err) { toast(err.message); }
 };
@@ -844,19 +995,40 @@ function sync({ bi, k }) {
   if (bi !== lastBeat) { lastBeat = bi; document.querySelectorAll('.beats li').forEach((li, i) => li.classList.toggle('on', i === bi)); }
 }
 
+// The browser's view transitions animate between views; the template card grows into the phone and back.
+const vt = (fn) => (!still && document.startViewTransition ? document.startViewTransition(fn).finished.catch(() => {}) : Promise.resolve(fn()));
+let studioFrom = null; // { view: 'chat' | 'profile', sel: the card the studio was opened from }
+function view(name) {
+  $('#chat').hidden = name !== 'chat'; $('#profile').hidden = name !== 'profile'; $('#studio').hidden = name !== 'studio';
+  $('#back').hidden = name === 'chat';
+  $('#back').textContent = name === 'studio' ? (studioFrom?.view === 'profile' ? 'Back to profile' : 'Back to thread') : 'Back';
+  $('#del').hidden = name !== 'chat' || !thread || !!thread.sample;
+}
+// Opens the studio from a template card, growing that card's thumbnail into the phone.
+function playFrom(card, list, i, from) {
+  const th = card.querySelector('.th9');
+  studioFrom = { view: from, sel: card.dataset.sel };
+  th.style.viewTransitionName = 'reel';
+  vt(() => { th.style.viewTransitionName = ''; openStudio(list, i); });
+}
 function openStudio(list, i) {
   templates = list; imgsBy = new Map(); cur = -1;
   $('#railTitle').textContent = `${list.length} for ${persona?.name || 'this persona'}`;
   $('#list').innerHTML = templates.map((t, j) => `<li><button class="item" style="--c:${COLOR[t.momentum]}" data-i="${j}">
     <span class="t9"${thumb(t)}></span><span><b>${esc(t.title)}</b><small>${esc(label(t))}</small></span></button></li>`).join('');
-  $('#chat').hidden = true; $('#studio').hidden = false; $('#back').hidden = false; $('#del').hidden = true;
-  $('#studio').scrollTop = 0;
+  reelCtx.fillStyle = '#000'; reelCtx.fillRect(0, 0, RW, RH); // no stale frame from the last template during the transition
+  view('studio'); $('#studio').scrollTop = 0;
   select(i);
 }
-function closeStudio() {
+function closeStudio(animate = false) {
   if ($('#studio').hidden) return;
-  player.stop(); develop.stop(); cur = -1;
-  $('#studio').hidden = true; $('#chat').hidden = false; $('#back').hidden = true; $('#del').hidden = !thread || !!thread.sample;
+  const from = studioFrom?.view || 'chat', at = cur;
+  const leave = () => { player.stop(); develop.stop(); cur = -1; view(from); };
+  if (!animate) return leave();
+  // Shrink the phone back into the card of whichever template is showing now.
+  const sel = studioFrom?.sel?.replace(/data-i="\d+"/, `data-i="${at}"`);
+  vt(() => { leave(); const th = sel && document.querySelector(sel + ' .th9'); if (th) { th.style.viewTransitionName = 'reel'; th.scrollIntoView({ block: 'nearest' }); } })
+    .then(() => document.querySelectorAll('.th9').forEach((t) => (t.style.viewTransitionName = '')));
 }
 $('#list').onclick = (e) => { const b = e.target.closest('.item'); if (b) select(+b.dataset.i); };
 
@@ -938,7 +1110,7 @@ async function exportVideo(btn) {
 $('#threads').onclick = (e) => { const b = e.target.closest('.th'); if (b) openThread(b.dataset.id).catch((err) => toast(err.message)); };
 $('#newThread').onclick = newThread;
 $('#home').onclick = newThread;
-$('#back').onclick = closeStudio;
+$('#back').onclick = () => (!$('#studio').hidden ? closeStudio(true) : closeProfile());
 $('#menu').onclick = (e) => { e.stopPropagation(); $('#side').classList.toggle('open'); };
 $('#side').onclick = (e) => e.stopPropagation();
 document.addEventListener('click', () => $('#side').classList.remove('open'));
@@ -948,7 +1120,7 @@ $('#del').onclick = async () => {
   await refresh(); newThread();
 };
 addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && !$('#studio').hidden && !$('#dlg').open) return closeStudio();
+  if (e.key === 'Escape' && !$('#dlg').open && !$('#adlg').open) { if (!$('#studio').hidden) return closeStudio(true); if (!$('#profile').hidden) return closeProfile(); }
   if ($('#studio').hidden || e.target.matches('input, select, textarea')) return;
   if (e.code === 'Space') { e.preventDefault(); player.play(); }
   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); select(cur + (e.key === 'ArrowDown' ? 1 : -1)); }
