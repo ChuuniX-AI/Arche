@@ -1,0 +1,180 @@
+{
+ "id": "sample",
+ "title": "What’s viral for the budget fashion big sister",
+ "sample": true,
+ "created": 1794301200000,
+ "updated": 1794301320000,
+ "llm": [],
+ "items": [
+  {
+   "type": "user",
+   "text": "What’s viral for the budget fashion big sister this week?"
+  },
+  {
+   "type": "browse",
+   "steps": [
+    {
+     "note": "Checking what Filipinos searched in the last 48 hours",
+     "args": [
+      "open",
+      "https://trends.google.com/trending?geo=PH&hours=48"
+     ],
+     "shot": "/shots/sample/1.png"
+    },
+    {
+     "note": "Reading the trend list: PBB Collab 3.0 is up 500% in 4 hours",
+     "args": [
+      "get",
+      "text",
+      "main"
+     ],
+     "shot": null
+    },
+    {
+     "note": "Looking at the newest Pinoy trend Shorts on YouTube",
+     "args": [
+      "open",
+      "https://www.youtube.com/results?search_query=pinoy+trend+shorts&sp=CAISAhgB"
+     ],
+     "shot": "/shots/sample/3.png"
+    },
+    {
+     "note": "Comparing views: 'emergency fashion trend but Filipino' is at 22M",
+     "args": [
+      "get",
+      "text",
+      "ytd-search"
+     ],
+     "shot": null
+    },
+    {
+     "note": "Checking which trend sounds are already overplayed",
+     "args": [
+      "open",
+      "https://www.youtube.com/results?search_query=tiktok+trend+philippines+shorts&sp=CAMSAhgB"
+     ],
+     "shot": "/shots/sample/5.png"
+    },
+    {
+     "note": "Turning the 4 strongest signals into templates",
+     "args": [
+      "get",
+      "text",
+      "ytd-search"
+     ],
+     "shot": null
+    }
+   ]
+  },
+  {
+   "type": "templates",
+   "message": "Two trends fit this persona right now. I skipped two that are either overplayed or not her kind of content.",
+   "templates": [
+    {
+     "title": "Emergency fit, pero Pinoy",
+     "trend": "\"the emergency fashion trend but im actually filipino\" has 22M views on Shorts. The format: a fashion emergency solved with things every Filipino home has.",
+     "momentum": "peaking",
+     "days_left": 4,
+     "format": "Problem / fix transformation",
+     "duration_s": 15,
+     "hook": "emergency: may lakad in 5 mins",
+     "beats": [
+      {
+       "t": "0-2s",
+       "shot": "Panicked face to camera, phone showing the time.",
+       "text": "emergency: may lakad in 5 mins"
+      },
+      {
+       "t": "2-8s",
+       "shot": "Fast cuts grabbing very Filipino fixes: tabo, safety pin, tita's scarf, Hello Kitty clip.",
+       "text": "walang problema"
+      },
+      {
+       "t": "8-13s",
+       "shot": "Hard cut on the beat to the finished outfit, walking toward the camera.",
+       "text": ""
+      },
+      {
+       "t": "13-15s",
+       "shot": "Close-up of the most absurd item, deadpan.",
+       "text": "salamat sa tabo"
+      }
+     ],
+     "caption": "pinoy fashion emergency kit, pls tell me I'm not the only one 😭",
+     "hashtags": [
+      "#emergencyfashion",
+      "#pinoy",
+      "#ootdph",
+      "#fyp"
+     ],
+     "audio": "The fast transition sound used by the original trend",
+     "sources": [
+      "https://www.youtube.com/results?search_query=pinoy+trend+shorts&sp=CAISAhgB"
+     ],
+     "references": [
+      "6sE42cAGzW8"
+     ],
+     "fit": "Budget fashion is exactly this persona’s lane. Swap the original’s items for things from the creator’s own room and the 200-peso angle the persona is built on."
+    },
+    {
+     "title": "My PBB nomination, if I were in the house",
+     "trend": "\"pbb collab 3.0\" is up 500% on Google Trends PH (5K+ searches), and started 4 hours ago. Nomination tally videos already have 61K views.",
+     "momentum": "rising",
+     "days_left": 3,
+     "format": "POV skit",
+     "duration_s": 20,
+     "hook": "POV: you're nominating your barkada sa PBB",
+     "beats": [
+      {
+       "t": "0-2s",
+       "shot": "Confession-room framing: sit centered, dim light, serious face.",
+       "text": "POV: you're nominating your barkada sa PBB"
+      },
+      {
+       "t": "2-10s",
+       "shot": "Name a friend and give a petty, specific reason.",
+       "text": "first nomination: 2 points"
+      },
+      {
+       "t": "10-17s",
+       "shot": "Second friend, an even pettier reason. Lean into the camera.",
+       "text": "nagnakaw ng ulam ko"
+      },
+      {
+       "t": "17-20s",
+       "shot": "Big Brother voice, off camera: \"Salamat.\" Walk out.",
+       "text": ""
+      }
+     ],
+     "caption": "sorry na agad sa barkada 😭 sino nomination niyo?",
+     "hashtags": [
+      "#pbbcollab",
+      "#pbb",
+      "#barkada",
+      "#fyp"
+     ],
+     "audio": "Original voice, plus the PBB confession-room hum underneath",
+     "sources": [
+      "https://trends.google.com/trending?geo=PH&hours=48"
+     ],
+     "references": [
+      "B1mZgpqoves",
+      "jt_VtY5NaO0"
+     ],
+     "fit": "Not fashion, but it’s a POV format the audience is watching right now. Rewritten as a petty barkada skit in the persona’s voice instead of a show recap."
+    }
+   ],
+   "skipped": [
+    {
+     "trend": "Hawak mo ang beat choreo",
+     "reason": "A dance trend, and this persona doesn’t do choreo. It’s also 7 months old and slowing down."
+    },
+    {
+     "trend": "Top 5 Filipino mentality lists",
+     "reason": "Crowded format where most videos stay under 2K views. Nobody is breaking out."
+    }
+   ]
+  }
+ ],
+ "accountId": "sample-mika"
+}

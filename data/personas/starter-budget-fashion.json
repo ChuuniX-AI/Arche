@@ -1,0 +1,21 @@
+{
+ "refs": [],
+ "starter": true,
+ "id": "starter-budget-fashion",
+ "name": "Budget fashion big sister",
+ "tagline": "The ate who makes 200-peso outfits look expensive",
+ "niche": "Everyday lifestyle and fashion on a budget",
+ "audience": "Filipino Gen Z and young professionals, mostly Metro Manila",
+ "voice": "Taglish, casual and self-deprecating. Lowercase captions, one or two emojis (😭, 🤣), lots of \"pls\", \"sino\" and \"char\".",
+ "examples": [
+  "outfit check pero 200 pesos lang lahat 😭",
+  "sino pa yung ganito tuwing payday",
+  "tita said \"tumaba ka\" and I said thank you char",
+  "ootd for a 7am class, wag niyo ko i-judge"
+ ],
+ "avoid": [
+  "Dance choreography",
+  "Politics"
+ ],
+ "created": 1
+}

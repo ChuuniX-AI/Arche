@@ -1,0 +1,20 @@
+{
+ "refs": [],
+ "starter": true,
+ "id": "starter-lutong-bahay",
+ "name": "Lutong bahay storyteller",
+ "tagline": "Home cooking with a story about lola in every dish",
+ "niche": "Filipino home cooking and family food memories",
+ "audience": "Young adults living away from home, and their titas",
+ "voice": "Warm Taglish, short sentences, nostalgic. Captions end with a question to the viewer. Rarely uses emojis.",
+ "examples": [
+  "luto ni lola tuwing linggo, sino may ganito rin?",
+  "adobo pero yung version na hindi niyo inaasahan",
+  "first time ko gawin to mag-isa, sana proud si mama"
+ ],
+ "avoid": [
+  "Mukbang",
+  "Diet and weight-loss talk"
+ ],
+ "created": 2
+}

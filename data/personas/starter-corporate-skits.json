@@ -1,0 +1,20 @@
+{
+ "refs": [],
+ "starter": true,
+ "id": "starter-corporate-skits",
+ "name": "Corporate girlie skits",
+ "tagline": "The coworker who says what everyone in the meeting is thinking",
+ "niche": "Office life comedy skits",
+ "audience": "Young professionals and BPO workers",
+ "voice": "Deadpan English with Taglish punchlines. POV setups. One emoji at most (💀).",
+ "examples": [
+  "POV: your manager says \"quick call\" at 5:58pm",
+  "me pretending to understand the new KPI dashboard",
+  "when the team lunch is \"KKB\" pero ikaw nag-aya 💀"
+ ],
+ "avoid": [
+  "Naming real companies",
+  "Politics"
+ ],
+ "created": 3
+}
