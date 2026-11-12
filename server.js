@@ -128,13 +128,39 @@ const CHAT_TOOLS = [
   }),
 ];
 
+const PERSONA_FIELDS = {
+  name: str('A short persona name, e.g. "Budget fashion big sister". Never a real person’s name.'),
+  tagline: str('Who the creator wants to be, in one line, e.g. "the friend who makes 200-peso outfits look expensive".'),
+  niche: str('e.g. "budget home cooking"'), audience: str('Who would watch, e.g. "Gen Z students in Metro Manila"'),
+  voice: str('How this persona writes: language mix, tone, emoji habits, recurring phrases.'),
+  examples: strs('3 to 5 original example captions in this persona’s voice and language.'),
+  avoid: strs('Content this persona never does.'),
+  refs: strs('2 or 3 YouTube video ids (11 characters) from your ["links"] output that best show the kind of content this persona makes. They become its picture.'),
+};
+const CREATE_TOOLS = [
+  CHAT_TOOLS[0],
+  fn('create_persona', 'Create the persona the user described. Ends your turn.', PERSONA_FIELDS),
+  CHAT_TOOLS[2],
+];
+const CREATE_SYSTEM = `You are Persona Studio. The user is telling you what kind of content creator they want to become.
+Turn that into a persona they can grow into.
+
+First take 2 to 5 browser steps to ground it in what works right now; the user watches the browser live.
+Search YouTube Shorts in that niche (https://www.youtube.com/results?search_query=<niche>+shorts) and run ["links"],
+or, if they name a creator or paste a YouTube channel link, open its /shorts page and run ["links"].
+Then call create_persona, with 2 or 3 of the video ids you saw as its picture. Take what makes those creators work (formats, hooks, voice), never their identity or content.
+Write the example captions yourself, in the language and slang the user writes in (e.g. Taglish if they do).
+If the description is too vague to make anything good, call reply with one short question instead.
+TikTok, Instagram and Reddit block this browser: do not visit them. Never try to get past a CAPTCHA or login wall.`;
+
 function system(a, p) {
+  a ||= { region: 'WW', regionName: 'Worldwide' };
   const region = a.region || 'WW', geo = region === 'WW' ? 'US' : region;
   const where = region === 'WW' ? 'worldwide (use US data as the biggest market, and global YouTube)' : a.regionName;
   return `You are Persona Studio's trend scout. A creator has chosen who they want to be (a persona) and posts as that persona on one account.
 Your job is to find what's viral right now that THIS persona would post.
 
-Account: ${a.name} on ${a.platform || 'short video'}
+Account: ${a.name ? `${a.name} on ${a.platform || 'short video'}` : 'not on an account yet'}
 Persona: ${p.name}${p.tagline ? `, ${p.tagline}` : ''}
 Niche: ${p.niche || 'not set'}
 Audience: ${p.audience || 'not set'}
@@ -167,22 +193,33 @@ List the YouTube ids it is based on in "references". Write text and captions in 
 // ---------- one chat turn: the agent browses and answers ----------
 const busy = new Set();
 async function turn(thread, text, emit) {
-  const account = await load('accounts', thread.accountId);
-  const persona = await load('personas', account.personaId);
+  const account = thread.accountId ? await load('accounts', thread.accountId).catch(() => null) : null;
+  let persona = thread.personaId ? await load('personas', thread.personaId).catch(() => null) : null;
+  const prompt = () => (persona ? system(account, persona) : CREATE_SYSTEM);
   const shots = path.join(DATA, 'shots', thread.id);
   await fs.mkdir(shots, { recursive: true });
   const session = 't' + thread.id;
   let live = null, browse = null;
   const add = async (item) => { thread.items.push(item); thread.updated = Date.now(); await save('threads', thread); };
+  // Each step's screenshot is the live frame, saved again when the next step starts, once the page has settled. Costs no waiting.
+  const stamp = Date.now().toString(36); // unique per turn, so later turns don't overwrite earlier screenshots
+  const snap = async () => {
+    const step = browse?.steps.at(-1), frame = live?.latest();
+    if (!step || !frame) return;
+    const name = `${stamp}-${browse.steps.length}.jpg`;
+    await fs.writeFile(path.join(shots, name), Buffer.from(frame, 'base64'));
+    step.shot = `/shots/${thread.id}/${name}`;
+  };
+  const endBrowse = async () => { if (browse) { await snap(); await add(browse); browse = null; } };
 
   await add({ type: 'user', text });
   if (!thread.llm.length || thread.llm[0].role !== 'system') thread.llm.unshift({ role: 'system', content: '' });
-  thread.llm[0].content = system(account, persona); // always the latest account and persona
+  thread.llm[0].content = prompt(); // always the latest account and persona
   thread.llm.push({ role: 'user', content: text });
   try {
     for (let step = 1; step <= MAX_STEPS; step++) {
       if (step === MAX_STEPS) thread.llm.push({ role: 'user', content: 'Out of time. Call submit_templates or reply now with what you have.' });
-      const msg = await openai(thread.llm, CHAT_TOOLS);
+      const msg = await openai(thread.llm, persona ? CHAT_TOOLS : CREATE_TOOLS);
       thread.llm.push(msg);
       let ended = false;
       for (const call of msg.tool_calls || []) {
@@ -192,23 +229,34 @@ async function turn(thread, text, emit) {
         if (name === 'browser') {
           if (!browse) { browse = { type: 'browse', steps: [] }; emit({ type: 'browse' }); }
           if (!live) live = await liveBrowser(session, emit);
-          const n = browse.steps.length + 1;
-          emit({ type: 'step', n, note: input.note, args: input.args });
+          await snap(); // the previous step's page, now settled
+          emit({ type: 'step', n: browse.steps.length + 1, note: input.note, args: input.args });
           out = await browser(session, input.args);
-          const frame = live.latest();
-          if (frame) await fs.writeFile(path.join(shots, `${n}.jpg`), Buffer.from(frame, 'base64'));
-          browse.steps.push({ note: input.note, args: input.args, shot: frame ? `/shots/${thread.id}/${n}.jpg` : null });
-          emit({ type: 'shot', n, src: browse.steps.at(-1).shot });
+          browse.steps.push({ note: input.note, args: input.args, shot: null });
+          await snap();
         } else if (name === 'update_persona') {
           if (input.avoid?.length) persona.avoid = [...new Set([...(persona.avoid || []), ...input.avoid])];
           if (input.voice) persona.voice = input.voice;
           await save('personas', persona);
-          thread.llm[0].content = system(account, persona);
+          thread.llm[0].content = prompt();
           const item = { type: 'persona', text: input.note };
           await add(item); emit(item);
           out = 'Saved.';
+        } else if (name === 'create_persona' && !persona) {
+          await endBrowse();
+          const lines = (v, n) => (Array.isArray(v) ? v : []).map((x) => String(x).slice(0, 300)).filter(Boolean).slice(0, n);
+          persona = { id: newId(), refs: lines(input.refs, 3).filter((r) => /^[\w-]{11}$/.test(r)), starter: false, created: Date.now(), avoid: lines(input.avoid, 12), examples: lines(input.examples, 8),
+            ...Object.fromEntries(['name', 'tagline', 'niche', 'audience', 'voice'].map((k) => [k, String(input[k] || '').slice(0, k === 'voice' ? 800 : 300)])) };
+          persona.name ||= 'New persona';
+          await save('personas', persona);
+          thread.personaId = persona.id; thread.title = persona.name;
+          thread.llm[0].content = prompt();
+          const item = { type: 'newpersona', personaId: persona.id };
+          await add(item); emit({ ...item, persona });
+          out = 'Created and shown to the user.';
+          ended = true; // the card itself asks what's next
         } else if (name === 'submit_templates' || name === 'reply') {
-          if (browse) { await add(browse); browse = null; }
+          await endBrowse();
           const item = name === 'reply' ? { type: 'reply', text: input.text }
             : { type: 'templates', message: input.message, templates: input.templates || [], skipped: input.skipped || [] };
           await add(item); emit(item);
@@ -220,7 +268,7 @@ async function turn(thread, text, emit) {
     }
     throw new Error('The agent ran out of steps without an answer.');
   } catch (e) {
-    if (browse) await add(browse);
+    await endBrowse();
     const item = { type: 'error', text: e.message };
     await add(item); emit(item);
   } finally {
@@ -229,63 +277,6 @@ async function turn(thread, text, emit) {
     await save('threads', thread);
     await live?.close();
   }
-}
-
-// ---------- drafting a persona from creators you want to be like ----------
-const oembed = (u) => fetch(u).then((r) => (r.ok ? r.json() : null)).catch(() => null);
-async function draftPersona(input, emit) {
-  const found = [], notes = [];
-  const session = 'p' + newId();
-  let live = null;
-  try {
-    for (const raw of input.links.slice(0, 8)) {
-      let u; try { u = new URL(raw); } catch { continue; }
-      const h = u.hostname.replace(/^(www|m)\./, '');
-      if (h === 'youtube.com' && /^\/(@|channel\/|c\/)/.test(u.pathname)) {
-        // A channel: open its Shorts tab in the live browser and read the titles.
-        if (!live) live = await liveBrowser(session, emit);
-        const page = `https://www.youtube.com${u.pathname.split('/').slice(0, u.pathname.startsWith('/@') ? 2 : 3).join('/')}/shorts`;
-        emit({ type: 'step', note: `Reading ${u.pathname.split('/')[1]}'s Shorts`, args: ['open', page] });
-        await ab(session, ['open', page]);
-        await ab(session, ['wait', '1500']);
-        const out = await links(session);
-        for (const line of String(out).split('\n').slice(0, 15)) {
-          const [id, title] = line.split(' | ');
-          if (title) found.push({ platform: 'youtube', id, title: title.replace(/ - play Short$/, '') });
-        }
-      } else if (h === 'youtube.com' || h === 'youtu.be') {
-        emit({ type: 'step', note: 'Reading a YouTube video' });
-        const o = await oembed(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(u.href)}`);
-        if (o) found.push({ platform: 'youtube', id: (u.href.match(/(?:shorts\/|v=|youtu\.be\/)([\w-]{11})/) || [])[1], title: o.title, author: o.author_name });
-      } else if (h === 'tiktok.com' && u.pathname.includes('/video/')) {
-        emit({ type: 'step', note: 'Reading a TikTok video' });
-        const o = await oembed(`https://www.tiktok.com/oembed?url=${encodeURIComponent(u.href)}`);
-        if (o?.title) found.push({ platform: 'tiktok', title: o.title, author: o.author_name, thumb: o.thumbnail_url });
-        else notes.push('One TikTok link had no public caption. Paste its caption instead.');
-      } else notes.push(`Can't read ${h} pages${h.includes('tiktok') || h.includes('instagram') ? ' (they block automated browsers). Paste video links or captions instead' : ''}.`);
-    }
-  } finally { await live?.close(); }
-
-  const captions = String(input.captions || '').split('\n').map((s) => s.trim()).filter(Boolean);
-  const examples = [...captions, ...found.map((f) => f.title)].slice(0, 8);
-  const draft = { examples, refs: found.filter((f) => f.id).slice(0, 4).map((f) => f.id) };
-  if (!examples.length && !input.idea) return emit({ type: 'draft', draft, notes: [...notes, 'Found nothing to read. Fill the fields in yourself.'] });
-
-  emit({ type: 'step', note: 'Writing the persona' });
-  try {
-    const msg = await openai([
-      { role: 'system', content: 'A creator wants to become a certain kind of content creator. From the videos and captions of creators they look up to, write the persona they want to be: what makes those creators work (formats, hooks, voice), as a direction of their own. Take the formula, never the identity or the content. Be specific and plain.' },
-      { role: 'user', content: JSON.stringify({ videos: found, captions, idea: input.idea || '' }) },
-    ], [fn('persona', 'The persona.', {
-      name: str('A short persona name, e.g. "Budget fashion big sister". Not a real person\'s name.'),
-      tagline: str('Who the creator wants to be, in one line, e.g. "the friend who makes 200-peso outfits look expensive".'),
-      niche: str('e.g. "budget home cooking"'), audience: str('Who would watch, e.g. "Gen Z students in Metro Manila"'),
-      voice: str('How this persona writes: language mix, tone, emoji habits, recurring phrases.'),
-      avoid: strs('Content this persona never does.'),
-    })], { type: 'function', function: { name: 'persona' } });
-    Object.assign(draft, JSON.parse(msg.tool_calls[0].function.arguments));
-  } catch (e) { notes.push(e.message.includes('OPENAI_API_KEY') ? 'Captions were read, but writing the persona needs an OpenAI key. Fill the rest in yourself.' : e.message); }
-  emit({ type: 'draft', draft, notes });
 }
 
 // ---------- http ----------
@@ -333,21 +324,22 @@ http.createServer(async (req, res) => {
       }
       return json(res, (await list('accounts')).sort((a, b) => a.name.localeCompare(b.name)));
     }
-    if (p === '/api/personas/draft' && req.method === 'POST') {
-      const b = await body(req);
-      const emit = sse(res);
-      await draftPersona({ links: clips(b.links, 8), captions: clip(b.captions, 4000), idea: clip(b.idea, 400) }, emit);
-      return res.end();
-    }
     if (api === 'api' && kind === 'threads') {
       if (!id && req.method === 'POST') {
         const b = await body(req);
-        await load('accounts', b.accountId); // must exist
-        const thread = { id: newId(), accountId: b.accountId, title: clip(b.title, 80) || 'New thread', created: Date.now(), updated: Date.now(), items: [], llm: [] };
+        // With an account, the thread scouts for its persona. Without one, the first message describes a new persona.
+        const account = b.accountId ? await load('accounts', b.accountId) : null;
+        const thread = { id: newId(), accountId: account?.id || null, personaId: account?.personaId || null, title: clip(b.title, 80) || 'New thread', created: Date.now(), updated: Date.now(), items: [], llm: [] };
         await save('threads', thread);
         return json(res, thread);
       }
       if (!id) return json(res, (await list('threads')).map(({ llm, items, ...t }) => t).sort((a, b) => b.updated - a.updated));
+      if (action === 'bind' && req.method === 'POST') {
+        const thread = await load('threads', id), account = await load('accounts', (await body(req)).accountId);
+        if (account.personaId !== thread.personaId) throw new Error('That account posts as a different persona.');
+        thread.accountId = account.id; await save('threads', thread);
+        return json(res, { ok: true });
+      }
       if (action === 'say' && req.method === 'POST') {
         const text = clip((await body(req)).text, 2000).trim();
         if (!text) throw new Error('Say something first.');

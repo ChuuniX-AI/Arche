@@ -15,14 +15,11 @@ Follow-ups ("make #2 shorter", "we never say bestie") revise the templates, and 
 ## Personas and accounts
 
 - **A persona** is who you want to be: a name, a one-line "who you want to be", niche, audience, voice, example captions, and what it never posts.
-  The blank chat shows the persona library. Four starter personas are included.
-- **Create a persona** from a description and creators you'd love to be like:
-  - A YouTube channel link: the agent opens its Shorts in the live browser and reads the titles.
-  - YouTube video links: read through YouTube's public oEmbed.
-  - TikTok video links: read through TikTok's public oEmbed. Some videos return no caption; paste those captions instead.
-
-  OpenAI then drafts the persona, taking those creators' formula rather than their identity, and you edit it before saving.
-  Without a key, captions are still read, and you fill in the rest yourself.
+- **Become someone new** by just describing it on the blank chat ("I want to be a brutally honest street food reviewer, Taglish").
+  The agent looks at what creators like that post on YouTube in the live browser, takes their formula (never their identity),
+  and creates the persona as a card in the chat. From the card: find what's viral now, put it on an account, or edit it.
+- **Or start as one** of the personas above the composer. Each is a mood board of frames from real YouTube Shorts of the kind it makes
+  (picked by the agent for personas it creates). Four starters are included. Editing is the only form.
 - **An account** is a real handle (name, platform, country) bound to one persona. Choosing a persona that isn't on an account asks which account should post as it.
 
 TikTok and Instagram profiles, and Reddit, block automated browsers, so the agent doesn't visit them.
