@@ -30,7 +30,6 @@ CLI that drives Chrome; run as `node node_modules/agent-browser/bin/agent-browse
 - `data/`: plain JSON files. `personas/` (arches), `accounts/`, `threads/`, `shots/` (step screenshots). Only `data/personas/starter-*.json` is committed.
 - `public/posters/`: custom still frames for preset reels.
 - `.claude/launch.json`: preview config "adguy" (`npm start`, port 5173).
-- `Dockerfile` + `fly.toml`: hosted deploy (Fly app `arche-demo`, region `sin`, volume `/data` via `DATA_DIR`, Chrome with `--no-sandbox`).
 
 ## Concepts
 

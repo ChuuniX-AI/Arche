@@ -10,7 +10,7 @@ import { CARDS_JS, REACH_JS, parseCard, videoFromHtml, withPageData, patternsOf,
 
 const run = promisify(execFile);
 const ROOT = import.meta.dirname;
-const DATA = process.env.DATA_DIR || path.join(ROOT, 'data'); // DATA_DIR: a persistent volume when hosted
+const DATA = path.join(ROOT, 'data');
 const AB = path.join(ROOT, 'node_modules/agent-browser/bin/agent-browser.js');
 const MODEL = process.env.OPENAI_MODEL || 'gpt-5-mini';
 const MAX_STEPS = Number(process.env.MAX_STEPS || 32); // a deep search takes 20-30 steps
