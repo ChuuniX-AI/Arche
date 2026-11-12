@@ -2,7 +2,8 @@
 
 Pick a persona (who you want to be as a creator) and put it on an account. Each account posts as one persona.
 In a thread, ask what's viral. The agent drives a real browser (agent-browser) through Google Trends and YouTube
-while you watch it live, and every video it reads (with views and age) lands on a shelf under the browser.
+while you watch it live, with a cursor showing what it opens, reads, scrolls, clicks and collects,
+and every video it reads (with views and age) lands on a shelf under the browser. Afterwards, the browsing replays like a short video.
 It keeps only the trends that fit that persona and lists the ones it skipped and why; videos a template is based on are ringed on the shelf.
 Each template plays as a 9:16 reel with on-screen text, shot directions and a caption in the persona's voice, and exports as MP4.
 Follow-ups ("make #2 shorter", "we never say bestie") revise the templates, and lasting preferences are saved to the persona.

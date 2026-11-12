@@ -32,16 +32,20 @@ const newId = () => Date.now().toString(36) + crypto.randomBytes(3).toString('he
 const ALLOWED = new Set(['links', 'open', 'snapshot', 'click', 'fill', 'press', 'scroll', 'get', 'back', 'wait', 'find']);
 
 // The fixed page script behind the "links" command: lists the YouTube videos on the current page as
-// "id | title | 9.2M views · 1y ago", reading each result card's text.
-const LINKS_JS = `JSON.stringify([...new Map([...document.querySelectorAll('a[href*="/shorts/"],a[href*="watch?v="]')].map((a) => {
+// "id | title | 9.2M views · 1y ago", reading each result card's text, plus where the visible ones sit on screen.
+const LINKS_JS = `(() => { const boxes = []; const text = [...new Map([...document.querySelectorAll('a[href*="/shorts/"],a[href*="watch?v="]')].map((a) => {
   const id = (a.href.match(/(?:shorts\\/|v=)([\\w-]{11})/) || [])[1];
   const card = a.closest('ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2, ytd-video-renderer, ytd-rich-item-renderer, ytd-reel-item-renderer, ytd-grid-video-renderer');
   const lines = ((card && card.innerText) || a.getAttribute('aria-label') || a.title || a.textContent || '').split(String.fromCharCode(10))
     .map((l) => l.trim()).filter((l) => l && l !== 'New' && l !== 'Shorts' && l !== 'Now playing');
   const stats = lines.find((l) => / views/.test(l)) || '';
   const title = lines.filter((l) => l !== stats && !/^[\\d:]+$/.test(l)).sort((x, y) => y.length - x.length)[0] || '';
+  const r = (card || a).getBoundingClientRect();
+  if (id && r.width > 20 && r.bottom > 0 && r.top < innerHeight && boxes.length < 14 && !boxes.some((b) => b.id === id))
+    boxes.push({ id, x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) });
   return [id, title.slice(0, 140) + ' | ' + stats.slice(0, 60)];
-}).filter(([id, t]) => id && t.length > 6)).entries()].slice(0, 25).map(([id, t]) => id + ' | ' + t).join('\\n'))`;
+}).filter(([id, t]) => id && t.length > 6)).entries()].slice(0, 25).map(([id, t]) => id + ' | ' + t).join('\\n');
+return JSON.stringify({ text, boxes }); })()`;
 // Parses links output back into videos, for the findings shelf.
 const parseLinks = (out) => String(out).split('\n').map((l) => l.split(' | ')).filter(([id]) => /^[\w-]{11}$/.test(id))
   .map(([id, title = '', stats = '']) => ({ id, title: title.slice(0, 140), stats: stats.slice(0, 60) }));
@@ -52,7 +56,13 @@ function browser(session, args) {
   if (args[0] === 'links') return links(session);
   return ab(session, args);
 }
-const links = (session) => ab(session, ['eval', LINKS_JS]).then((o) => { try { return JSON.parse(JSON.parse(o)); } catch { return o; } });
+// Returns { text } for the agent and { boxes } (on-screen positions of the videos) for the UI.
+const linksFull = (session) => ab(session, ['eval', LINKS_JS]).then((o) => { try { return JSON.parse(JSON.parse(o)); } catch { return { text: o, boxes: [] }; } });
+const links = (session) => linksFull(session).then((r) => r.text);
+// Where an element is on screen, so the cursor can go there before the agent clicks it.
+const boxOf = (session, sel) => ab(session, ['get', 'box', sel, '--json']).then((o) => {
+  try { const d = JSON.parse(o.match(/\{.*\}/s)[0]).data; const b = d.box || d; return b.width ? { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height) } : null; } catch { return null; }
+});
 
 // Unrestricted, for the server's own calls.
 async function ab(session, args) {
@@ -68,19 +78,20 @@ async function ab(session, args) {
 // Frames only arrive when the page changes, so this adds no wait to the agent.
 async function liveBrowser(session, emit) {
   await ab(session, ['set', 'viewport', '1280', '800']);
-  let latest = null, ws = null;
+  let latest = null, ws = null, url = '';
   try {
     const port = JSON.parse((await ab(session, ['stream', 'status', '--json'])).match(/\{.*\}/s)[0]).data.port;
     ws = new WebSocket(`ws://127.0.0.1:${port}/?maxFps=12`);
     ws.onmessage = (m) => {
       const e = JSON.parse(m.data);
       if (e.type === 'frame') { latest = e.data; emit({ type: 'frame', data: e.data }); }
-      if (e.type === 'url') emit({ type: 'url', url: e.url });
+      if (e.type === 'url') { url = e.url; emit({ type: 'url', url: e.url }); }
     };
     ws.onerror = () => {};
   } catch { /* no stream: the agent still works, the user just sees step notes */ }
   return {
     latest: () => latest,
+    url: () => url,
     close: async () => { ws?.close(); await ab(session, ['close']); },
   };
 }
@@ -240,15 +251,22 @@ async function turn(thread, text, emit) {
           if (!browse) { browse = { type: 'browse', steps: [] }; emit({ type: 'browse' }); }
           if (!live) live = await liveBrowser(session, emit);
           await snap(); // the previous step's page, now settled
-          emit({ type: 'step', n: browse.steps.length + 1, note: input.note, args: input.args });
-          out = await browser(session, input.args);
-          if (input.args?.[0] === 'links') {
+          const [cmd, sel] = input.args || [];
+          // Clicks and typing: find the element first, so the cursor is there when it happens (one quick lookup).
+          const box = ['click', 'fill'].includes(cmd) && typeof sel === 'string' && ALLOWED.has(cmd) ? await boxOf(session, sel) : null;
+          const step = { note: input.note, args: input.args, shot: null, ...(box && { box }) };
+          emit({ type: 'step', n: browse.steps.length + 1, ...step });
+          if (cmd === 'links' && Array.isArray(input.args)) {
+            const r = await linksFull(session);
+            out = r.text; step.boxes = r.boxes || [];
             // Show what the agent found as it finds it.
             const seen = new Set((browse.found ||= []).map((v) => v.id));
             const fresh = parseLinks(out).filter((v) => !seen.has(v.id)).slice(0, 30 - browse.found.length);
-            if (fresh.length) { browse.found.push(...fresh); emit({ type: 'found', items: fresh }); }
-          }
-          browse.steps.push({ note: input.note, args: input.args, shot: null });
+            if (fresh.length) browse.found.push(...fresh);
+            emit({ type: 'found', items: fresh, boxes: step.boxes });
+          } else out = await browser(session, input.args);
+          step.url = live.url();
+          browse.steps.push(step);
           await snap();
         } else if (name === 'update_persona') {
           if (input.avoid?.length) persona.avoid = [...new Set([...(persona.avoid || []), ...input.avoid])];
