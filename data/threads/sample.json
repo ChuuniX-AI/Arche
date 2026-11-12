@@ -1,6 +1,6 @@
 {
  "id": "sample",
- "title": "What’s viral for the budget fashion big sister",
+ "title": "What’s viral for the 200-Peso Runway Queen",
  "sample": true,
  "created": 1794301200000,
  "updated": 1794301320000,
@@ -8,7 +8,7 @@
  "items": [
   {
    "type": "user",
-   "text": "What’s viral for the budget fashion big sister this week?"
+   "text": "What’s viral for the 200-Peso Runway Queen this week?"
   },
   {
    "type": "browse",

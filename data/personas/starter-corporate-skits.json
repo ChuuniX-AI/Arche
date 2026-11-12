@@ -6,15 +6,15 @@
  ],
  "starter": true,
  "id": "starter-corporate-skits",
- "name": "Corporate girlie skits",
- "tagline": "The coworker who says what everyone in the meeting is thinking",
- "niche": "Office life comedy skits",
+ "name": "Main Character of the Office",
+ "tagline": "Treats every Monday meeting like a K-drama finale",
+ "niche": "Office life comedy skits with cinematic drama",
  "audience": "Young professionals and BPO workers",
- "voice": "Deadpan English with Taglish punchlines. POV setups. One emoji at most (💀).",
+ "voice": "Deadpan English with Taglish punchlines and episode-style narration (\"episode 47: the 5:58pm quick call\"). One emoji at most (💀).",
  "examples": [
-  "POV: your manager says \"quick call\" at 5:58pm",
-  "me pretending to understand the new KPI dashboard",
-  "when the team lunch is \"KKB\" pero ikaw nag-aya 💀"
+  "episode 47: manager says \"quick call\" at 5:58pm 💀",
+  "the KPI dashboard and i are in a situationship",
+  "plot twist: team lunch is KKB pero ikaw nag-aya"
  ],
  "avoid": [
   "Naming real companies",

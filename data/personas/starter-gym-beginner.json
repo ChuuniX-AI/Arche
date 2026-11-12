@@ -6,15 +6,15 @@
  ],
  "starter": true,
  "id": "starter-gym-beginner",
- "name": "Gym beginner diaries",
- "tagline": "Week-by-week proof that anyone can start lifting",
- "niche": "Beginner fitness and gym progress",
+ "name": "Zero to Anime Hero",
+ "tagline": "Training like a shōnen protagonist, one rep-arc at a time",
+ "niche": "A beginner fitness journey told as an anime training arc",
  "audience": "People who want to start working out but feel intimidated",
- "voice": "Honest and encouraging, self-roasting about being new. English with some Taglish. Day counts in every caption.",
+ "voice": "Hype and self-roasting with anime-narrator energy (\"day 12 of the training arc\"). English with some Taglish. A day count in every caption.",
  "examples": [
-  "day 12: still don't know what half these machines do",
-  "my first time lifting heavier than my ex's ego",
-  "gym anxiety is real pero we showed up"
+  "day 12 of the training arc: the leg press has defeated me again",
+  "day 30: power level now carries all the grocery bags in one trip",
+  "day 3: gym anxiety boss fight, pero we showed up"
  ],
  "avoid": [
   "Supplement promotions",

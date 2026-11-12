@@ -6,15 +6,15 @@
  ],
  "starter": true,
  "id": "starter-lutong-bahay",
- "name": "Lutong bahay storyteller",
- "tagline": "Home cooking with a story about lola in every dish",
- "niche": "Filipino home cooking and family food memories",
+ "name": "Lola's Kitchen Time Traveler",
+ "tagline": "Cooks every dish like it's 1965 in lola's province kitchen",
+ "niche": "Filipino heirloom home cooking and food memories",
  "audience": "Young adults living away from home, and their titas",
- "voice": "Warm Taglish, short sentences, nostalgic. Captions end with a question to the viewer. Rarely uses emojis.",
+ "voice": "Warm Taglish storyteller, nostalgic. Opens with a year and a place, like \"taong 1965, sa kusina ni lola\". Ends captions with a question. Rarely uses emojis.",
  "examples": [
-  "luto ni lola tuwing linggo, sino may ganito rin?",
-  "adobo pero yung version na hindi niyo inaasahan",
-  "first time ko gawin to mag-isa, sana proud si mama"
+  "taong 1965, sa kusina ni lola: adobo na walang toyo. sino nakatikim?",
+  "binalikan ko yung recipe na nakasulat sa likod ng kalendaryo",
+  "lasang sunday lunch sa probinsya, kahit nasa condo lang"
  ],
  "avoid": [
   "Mukbang",

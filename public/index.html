@@ -229,6 +229,11 @@ details.skipped b { color: var(--ink); font-weight: 500; }
 #heroSlot { margin-top: 18px; text-align: left; }
 #heroSlot .composer { box-shadow: 0 0 0 1px var(--line), 0 24px 80px -30px rgba(61,107,255,.45); }
 #heroSlot .suggest { margin-top: 14px; }
+.others { justify-self: center; align-self: center; display: inline-flex; align-items: center; gap: 7px; margin-top: 2px; color: var(--dim); font-size: 13px; font-weight: 500; padding: 6px 12px; border-radius: 999px; }
+.others:hover { color: var(--ink); background: var(--panel); }
+.others svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 1.8; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.gallery.dealing .pboard { animation: deal .5s cubic-bezier(.2,1.2,.4,1) both; animation-delay: calc(var(--i) * 70ms); }
+@keyframes deal { from { opacity: 0; transform: translateY(14px) scale(.96); } }
 .gallery { margin-top: 22px; display: grid; grid-auto-flow: column; grid-auto-columns: calc((100% - 36px) / 4); gap: 12px; text-align: left;
   overflow-x: auto; padding: 4px 4px 8px; margin-inline: -4px; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 
@@ -415,6 +420,7 @@ dialog .btns.split { justify-content: flex-start; }
           <h1>Who do you want to be?</h1>
           <p>Start as one of these, or describe your own below.</p>
           <div class="gallery" id="gallery" aria-label="Personas"></div>
+          <button type="button" class="others" id="others"><svg viewBox="0 0 16 16"><path d="M2 5h9l-2.5-2.5M14 11H5l2.5 2.5"/></svg>Show others</button>
           <div id="heroSlot"></div>
         </div>
       </div>
@@ -502,7 +508,12 @@ const wait = (ms) => new Promise((r) => setTimeout(r, still ? 0 : ms));
 const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), 2400); }
 const host = (u) => { try { const x = new URL(u); return x.host.replace(/^www\./, '') + x.pathname.replace(/\/$/, '') + x.search; } catch { return u || ''; } };
-const initials = (n) => (n || '?').replace(/\(.*\)/, '').trim().split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+// "The 200-Peso Runway Queen" -> "RQ": skip little words and numbers.
+const initials = (n) => {
+  const w = (n || '?').replace(/\(.*\)/, '').trim().split(/\s+/);
+  const main = w.filter((x) => /^\p{L}/u.test(x) && !/^(the|a|an|of|to|and|ni|ng|sa)$/i.test(x));
+  return (main.length ? main : w).map((x) => x[0]).join('').slice(0, 2).toUpperCase();
+};
 const api = (u, opts) => fetch(u, opts).then(async (r) => { const b = await r.json(); if (!r.ok) throw new Error(b.error || r.statusText); return b; });
 const post = (u, body) => api(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 
@@ -526,7 +537,7 @@ async function stream(url, body, on) {
 // A thread is about one persona; it starts either from an account, or from a description the agent turns into a new persona.
 let personas = [], accounts = [], threads = [], thread = null, account = null, persona = null, busy = false;
 let live = null; // the browser block of the turn in progress: { steps, url }
-const PCOLORS = ['#3d6bff', '#ffb547', '#3ddc97', '#ff7ab6', '#b38cff', '#4fd1ff'];
+const PCOLORS = ['#3d6bff', '#ffb547', '#3ddc97', '#ff7ab6', '#b38cff', '#4fd1ff', '#ff8a5c', '#c6f36b'];
 const personaById = (id) => personas.find((p) => p.id === id) || null;
 const accountById = (id) => accounts.find((a) => a.id === id) || null;
 const accountsOf = (p) => accounts.filter((a) => a.personaId === p?.id);
@@ -566,10 +577,23 @@ function boardHTML(p, { tag = 'button', attrs = '' } = {}) {
       <span class="pon${on.length ? ' yes' : ''}">${esc(on.length ? on.map((a) => a.name).join(', ') : p.starter ? 'Starter' : 'Not on an account yet')}</span></span></${tag}>`;
 }
 
-function renderGallery() {
-  $('#gallery').innerHTML = personas.map((p) => `<div class="pwrap${persona?.id === p.id ? ' on' : ''}">
+// Only 4 personas at a time, dealt at random; the one in use always stays in view. "Show others" deals a new set.
+const SHOWN = 4;
+let dealt = [];
+function deal() {
+  const rest = personas.filter((p) => p.id !== persona?.id && !dealt.includes(p.id));
+  const fresh = rest.length >= SHOWN - 1 ? rest : personas.filter((p) => p.id !== persona?.id); // ran out: start over
+  dealt = [persona?.id, ...[...fresh].sort(() => Math.random() - 0.5).map((p) => p.id)].filter(Boolean).slice(0, SHOWN);
+}
+function renderGallery(animate = false) {
+  if (!dealt.length || dealt.some((id) => !personaById(id))) deal();
+  if (persona && !dealt.includes(persona.id)) dealt = [persona.id, ...dealt].slice(0, SHOWN);
+  $('#others').hidden = personas.length <= SHOWN;
+  $('#gallery').classList.toggle('dealing', animate && !still);
+  $('#gallery').innerHTML = dealt.map(personaById).map((p, i) => `<div class="pwrap${persona?.id === p.id ? ' on' : ''}" style="--i:${i}">
     ${boardHTML(p, { attrs: `type="button" data-p="${esc(p.id)}" aria-pressed="${persona?.id === p.id}" aria-label="${esc(p.name)}: open profile"` })}</div>`).join('');
 }
+$('#others').onclick = () => { deal(); renderGallery(true); };
 $('#gallery').onclick = (e) => {
   const b = e.target.closest('button'); if (!b) return;
   openProfile(b.dataset.p);
@@ -589,6 +613,7 @@ function newThread() {
   $('#title').textContent = 'New thread'; $('#who').textContent = '';
   $('#log').innerHTML = ''; $('#scroll').hidden = true; $('#hero').hidden = false; $('#del').hidden = true;
   $('#heroSlot').append($('#composer'), $('#suggest')); $('.dock').hidden = true; // the composer sits in the middle until the thread starts
+  dealt = []; // a fresh set of personas each time
   renderGallery(); showAcct(); markThread(); $('#side').classList.remove('open'); $('#input').focus();
 }
 function dock() { $('.dock').append($('#composer'), $('#suggest')); $('.dock').hidden = false; }
@@ -1193,7 +1218,12 @@ function sync({ bi, k }) {
 }
 
 // The browser's view transitions animate between views; the template card grows into the phone and back.
-const vt = (fn) => (!still && document.startViewTransition ? document.startViewTransition(fn).finished.catch(() => {}) : Promise.resolve(fn()));
+const vt = (fn) => {
+  if (still || !document.startViewTransition || document.hidden) return Promise.resolve(fn());
+  const t = document.startViewTransition(fn);
+  t.ready.catch(() => {}); // a skipped transition still runs fn; only the animation is lost
+  return t.finished.catch(() => {});
+};
 let studioFrom = null; // { view: 'chat' | 'profile', sel: the card the studio was opened from }
 function view(name) {
   $('#chat').hidden = name !== 'chat'; $('#profile').hidden = name !== 'profile'; $('#studio').hidden = name !== 'studio';

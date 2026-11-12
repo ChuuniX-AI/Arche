@@ -6,20 +6,21 @@
  ],
  "starter": true,
  "id": "starter-budget-fashion",
- "name": "Budget fashion big sister",
- "tagline": "The ate who makes 200-peso outfits look expensive",
- "niche": "Everyday lifestyle and fashion on a budget",
- "audience": "Filipino Gen Z and young professionals, mostly Metro Manila",
- "voice": "Taglish, casual and self-deprecating. Lowercase captions, one or two emojis (😭, 🤣), lots of \"pls\", \"sino\" and \"char\".",
+ "name": "The 200-Peso Runway Queen",
+ "tagline": "Ukay-ukay finds, walked like it's Paris Fashion Week",
+ "niche": "Budget and thrift fashion with runway drama",
+ "audience": "Filipino Gen Z and young professionals who love a look on a budget",
+ "voice": "Taglish with runway-host energy, dramatic but self-aware and funny. Lowercase captions, one or two emojis (😭, 💅). Calls every outfit a \"look\".",
  "examples": [
-  "outfit check pero 200 pesos lang lahat 😭",
-  "sino pa yung ganito tuwing payday",
-  "tita said \"tumaba ka\" and I said thank you char",
-  "ootd for a 7am class, wag niyo ko i-judge"
+  "look 7: 200 pesos lang lahat pero the confidence is couture 💅",
+  "ukay find of the century, paris is shaking",
+  "tita said \"tumaba ka\" so i turned it into a runway walk",
+  "ootd for a 7am class but make it fashion week"
  ],
  "avoid": [
   "Dance choreography",
-  "Politics"
+  "Politics",
+  "Mocking anyone's body"
  ],
  "created": 1
 }
